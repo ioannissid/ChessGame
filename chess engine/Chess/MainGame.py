@@ -24,7 +24,8 @@ def main():
     RUNNING = True
     SQSELECTED=() # keeps tract  of the user's last click
     PLAYERCLICKS= [] # keeps tract of the total clicks so it can move the pieces
-    COUNT=0
+    VALIDMOVES = GAMESTATE.GETVALIDMOVES()
+    MOVEMADE = False #flag for when a move is made
     while RUNNING:
         for i in g.event.get():
             if i.type==g.QUIT:
@@ -42,10 +43,13 @@ def main():
                 if len(PLAYERCLICKS)==2 : #2nd click
                     MOVE = ChessEngine.MOVE(PLAYERCLICKS[0],PLAYERCLICKS[1],GAMESTATE.BOARD)
                     print (MOVE.GETCHESSNOTATION()) # debug
-                    GAMESTATE.MAKEMOVE(MOVE)
-                    SQSELECTED =() #resetting clicks
-                    PLAYERCLICKS= []
-                    COUNT=COUNT+1
+                    if MOVE in VALIDMOVES:
+                        GAMESTATE.MAKEMOVE(MOVE)
+                        MOVEMADE=True
+                        SQSELECTED =() #resetting clicks
+                        PLAYERCLICKS= []
+                    else:
+                        PLAYERCLICKS=[SQSELECTED]
             elif i.type==g.KEYDOWN:
                 if i.key== g.K_BACKSPACE: #undo with backspace
                     if len(GAMESTATE.MOVELOG) != 0:
@@ -53,7 +57,11 @@ def main():
                     else:
                         print("Original Positions")
                     GAMESTATE.UNDOMOVE()
+                    MOVEMADE=True
                     
+        if MOVEMADE:
+            VALIDMOVES =GAMESTATE.GETVALIDMOVES() # only doing after a valid move to not create the same list every frame           
+            MOVEMADE=False
         DrawGameState(SCREEN,GAMESTATE)
         CLOCK.tick(MAX_FPS)
         g.display.flip()
@@ -76,7 +84,7 @@ def DrawPieces(SCREEN,BOARD):
     for i in range(DIMENSION):
         for j in range(DIMENSION):
             PIECE= BOARD[i][j]
-            if PIECE != "-": #not empty
+            if PIECE != "--": #not empty
                SCREEN.blit(IMAGES[PIECE],g.Rect(j*SQ_SIZE,i*SQ_SIZE,SQ_SIZE,SQ_SIZE)) 
             
                 
