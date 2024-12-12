@@ -15,13 +15,21 @@ class GAMESTATE():
             ["wR","wN","wB","wQ","wK","wB","wN","wR"]]
         self.WHITETOMOVE = True
         self.MOVELOG=[]
-        
+    
     def MAKEMOVE(self,MOVE):
         self.BOARD[MOVE.STARTROW][MOVE.STARTCOL] = "-"
         self.BOARD[MOVE.ENDROW][MOVE.ENDCOL] = MOVE.PIECEMOV
         self.MOVELOG.append(MOVE) #Log move
         self.WHITETOMOVE=not self.WHITETOMOVE #switch turns
-        
+    
+    def UNDOMOVE(self):
+        if len(self.MOVELOG) != 0:
+            MOVE = self.MOVELOG.pop()
+            self.BOARD[MOVE.STARTROW][MOVE.STARTCOL] = MOVE.PIECEMOV
+            self.BOARD[MOVE.ENDROW][MOVE.ENDCOL] = MOVE.PIECECAP
+            self.WHITETOMOVE = not self.WHITETOMOVE # switch turns back
+            
+    
 class MOVE(): 
     #chess dictionary to map keys to values
     RANKSTOROWS= {"1" : 7, "2":6, "3":5, "4":4,

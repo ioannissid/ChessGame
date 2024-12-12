@@ -24,11 +24,12 @@ def main():
     RUNNING = True
     SQSELECTED=() # keeps tract  of the user's last click
     PLAYERCLICKS= [] # keeps tract of the total clicks so it can move the pieces
+    COUNT=0
     while RUNNING:
         for i in g.event.get():
             if i.type==g.QUIT:
                 RUNNING=False
-            elif i.type == g.MOUSEBUTTONDOWN:
+            elif i.type == g.MOUSEBUTTONDOWN: # <------- START OF MOUSE HANDLING
                 LOCATION = g.mouse.get_pos()
                 COL = LOCATION[0]//SQ_SIZE
                 ROW = LOCATION[1]//SQ_SIZE
@@ -44,6 +45,15 @@ def main():
                     GAMESTATE.MAKEMOVE(MOVE)
                     SQSELECTED =() #resetting clicks
                     PLAYERCLICKS= []
+                    COUNT=COUNT+1
+            elif i.type==g.KEYDOWN:
+                if i.key== g.K_BACKSPACE: #undo with backspace
+                    if len(GAMESTATE.MOVELOG) != 0:
+                        print("Move has been undoed")
+                    else:
+                        print("Original Positions")
+                    GAMESTATE.UNDOMOVE()
+                    
         DrawGameState(SCREEN,GAMESTATE)
         CLOCK.tick(MAX_FPS)
         g.display.flip()
