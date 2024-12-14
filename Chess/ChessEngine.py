@@ -20,6 +20,9 @@ class GAMESTATE():
         self.BKINGLOC= (0,4)
         self.CHECKMATE= False
         self.STALEMATE= False
+        INCHECK=False
+        self.PINNED=[]
+        self.CHECKS=[]
         
     def MAKEMOVE(self,MOVE):
         self.BOARD[MOVE.STARTROW][MOVE.STARTCOL] = "--"
@@ -43,40 +46,95 @@ class GAMESTATE():
                 self.BKINGLOC = (MOVE.STARTROW,MOVE.STARTCOL)
                 
     def GETVALIDMOVES(self):
-        MOVES=self.GETPOSSIBLEMOVES()
-        for i in range(len(MOVES)-1,-1,-1): # going backwards to avoid bugs after removing items and shifting them (1st -1 is to go to last element, 2nd -1 is to show the first and 3rd -1 is the increment) python handles underflow like that
-            self.MAKEMOVE(MOVES[i])
-            self.WHITETOMOVE = not self.WHITETOMOVE
-            if self.INCHECK():
-                MOVES.remove(MOVES[i])
-            self.WHITETOMOVE = not self.WHITETOMOVE
-            self.UNDOMOVE()
-        if len(MOVES)==0:       #checking for stalemate and checkmate plus returning them to false if the move gets undone
-            if self.INCHECK():
-                self.CHECKMATE=True
-            else:
-                self.STALEMATE=True
-        else:
-            self.CHECKMATE=False
-            self.STALEMATE=False
-        return MOVES
-    def INCHECK(self): #if the user is in check
+        MOVES=[]
+        self.INCHECK,self.PINNED,self.CHECKS = self.CHECKFORTHREATS()
         if self.WHITETOMOVE:
-            return self.UNDERATTACK(self.WKINGLOC[0],self.WKINGLOC[1])
+            KROW=self.WKINGLOC[0]
+            KCOL=self.WKINGLOC[1]
         else:
-            return self.UNDERATTACK(self.BKINGLOC[0],self.BKINGLOC[1])
-        
+            KROW=self.BKINGLOC[0]
+            KCOL=self.BKINGLOC[1]
+        if self.INCHECK:
+            if len(self.CHECKS)==1 :# only one check
+                MOVES=self.GETPOSSIBLEMOVES()
+                CHECK=self.CHECKS[0] #check info
+                CHECKROW=CHECK[0]
+                CHECKCOL=CHECK[1]
+                PIECECHECK=self.BOARD[CHECKROW][CHECKCOL]
+                VALIDS=[]
+                if PIECECHECK[1]=='N':
+                    VALID = [(CHECKROW,CHECKCOL)]
+                else:  #squares between the king and attacker or the square of the attacker
+                    for i in range (1,8):
+                        VALID = (KROW+CHECK[2]* i, KCOL+CHECK[3]*i)
+                        VALIDS.append(VALID)
+                        if VALID[0] == CHECKROW and VALID[1]==CHECKCOL: #break cause we reached the threat
+                            break
+                for i in range(len(MOVES)-1,-1,-1):
+                    if MOVES[i].PIECEMOV[1]!='K': #move doesnt move the king so it must block or capture
+                        if not (MOVES[i].ENDROW,MOVES[i].ENDCOL) in VALIDS:
+                            MOVES.remove(MOVES[i])
+            else:
+                self.GETKINGMOVES(KROW,KCOL,MOVES)
+        else:
+            MOVES = self.GETPOSSIBLEMOVES()                          
+        return MOVES
     
-    def UNDERATTACK(self,i,j): #if the enemy can attack the square i,j
-        self.WHITETOMOVE = not self.WHITETOMOVE #switching to opponent
-        OPPMOVES = self.GETPOSSIBLEMOVES() #generate opponents move
-        self.WHITETOMOVE = not self.WHITETOMOVE#switch back
-        for MOVE in OPPMOVES:
-            if MOVE.ENDROW == i and MOVE.ENDCOL == j: #square is under attack
-                return True
-        return False
-        
-        
+    
+    
+    def CHECKFORTHREATS(self):
+        PINNED =[]
+        CHECKS=[]
+        INCHECK=False
+        if self.WHITETOMOVE:
+            ENEMY="b"
+            ALLY="w"
+            STARTROW=self.WKINGLOC[0]
+            STARTCOL=self.WKINGLOC[1]
+        else:
+            ENEMY="w"
+            ALLY="b"
+            STARTROW=self.BKINGLOC[0]
+            STARTCOL=self.BKINGLOC[1]
+        DIRECTIONS =((-1, 0), (0, -1), (1, 0), (0, 1), (-1, -1), (-1, 1), (1, -1), (1, 1)) #check from the king for pins and checks
+        for i in range(len(DIRECTIONS)):
+            DIR=DIRECTIONS[i]
+            POSPIN=() #possible pin
+            for j in range(1,8):#squares away
+                ENDROW = STARTROW + DIR[0] * j
+                ENDCOL = STARTCOL + DIR[1] * j
+                if 0 <= ENDROW < 8 and 0 <= ENDCOL <8:
+                    ENDPIECE= self.BOARD[ENDROW][ENDCOL]
+                    if ENDPIECE[0] == ALLY and ENDPIECE[1]!='K': #checking if the ally is pinned
+                        if POSPIN == ():
+                            POSPIN = (ENDROW,ENDCOL,DIR[0],DIR[1])
+                        else: # if the ally has another ally behind him
+                            break
+                    elif ENDPIECE[0]==ENEMY:
+                        TYPE = ENDPIECE[1] #so i can check depending on piece for its type of pin
+                        if (0 <= i <= 3 and TYPE == "R") or (4 <= i <= 7 and TYPE == "B") or (j == 1 and TYPE == "p" and ((TYPE == "w" and 6 <= i <= 7) or (TYPE == "b" and 4 <= i <= 5))) or (TYPE == "Q") or (j == 1 and TYPE == "K"):
+                            if POSPIN == (): #if pospin == empty then that means there are no pieces in between so its a check
+                                INCHECK=True
+                                CHECKS.append((ENDROW,ENDCOL,DIR[0],DIR[1]))
+                                break
+                            else: #piece is blocking
+                                PINNED.append(POSPIN)
+                                break
+                        else: #enemy not a threat 
+                            break
+                else:
+                    break #out of bounds
+        KDIRECTIONS = ((-2,-1),(-2,1),(-1,-2),(-1,2),(1,-2),(1,2),(2,-1),(2,1)) #knight directions cause they dont really have common moveset with the rest of the pieces  
+        for y in KDIRECTIONS:
+            ENDROW = STARTROW + y[0] 
+            ENDCOL = STARTCOL + y[1] 
+            if 0 <= ENDROW < 8 and 0 <= ENDCOL <8:
+                ENDPIECE= self.BOARD[ENDROW][ENDCOL]
+                if ENDPIECE[0]==ENEMY and ENDPIECE[1] =='N':
+                    INCHECK=True
+                    CHECKS.append((ENDROW,ENDCOL,y[0],y[1]))
+        return INCHECK,PINNED,CHECKS
+                                            
     def GETPOSSIBLEMOVES(self):
         MOVES= []
         for i in range(len(self.BOARD)): #ROWS
@@ -100,30 +158,52 @@ class GAMESTATE():
     
     
     def GETPAWNMOVES(self,i,j,MOVES):
+        PINNED=False
+        PINDIR=() #pin direction
+        for x in range (len(self.PINNED)-1,-1,-1):
+            if self.PINNED[x][0]==i and self.PINNED[x][1]==j:
+                PINNED=True
+                PINDIR=(self.PINNED[x][2],self.PINNED[x][3])
+                self.PINNED.remove(self.PINNED[x])
+            break
         if self.WHITETOMOVE:
             if self.BOARD[i-1][j]== "--":#1 up
-                MOVES.append(MOVE((i,j),(i-1,j),self.BOARD))
-                if i==6 and self.BOARD[i-2][j]=="--":#2 up
-                    MOVES.append(MOVE((i,j),(i-2,j),self.BOARD))
+                if not PINNED or PINDIR==(-1,0):
+                    MOVES.append(MOVE((i,j),(i-1,j),self.BOARD))
+                    if i==6 and self.BOARD[i-2][j]=="--":#2 up
+                        MOVES.append(MOVE((i,j),(i-2,j),self.BOARD))
             if j-1>=0:#capture left
-                if self.BOARD[i-1][j-1][0]=='b': #capture
-                   MOVES.append(MOVE((i,j),(i-1,j-1),self.BOARD)) 
+                if not PINNED or PINDIR==(-1,-1): 
+                    if self.BOARD[i-1][j-1][0]=='b': #capture
+                        MOVES.append(MOVE((i,j),(i-1,j-1),self.BOARD)) 
             if j+1<=7:#capture right
-                if self.BOARD[i-1][j+1][0]=='b':
-                    MOVES.append(MOVE((i,j),(i-1,j+1),self.BOARD))
+                if not PINNED or PINDIR==(-1,1):   
+                    if self.BOARD[i-1][j+1][0]=='b':
+                        MOVES.append(MOVE((i,j),(i-1,j+1),self.BOARD))
         else:
             if self.BOARD[i+1][j]== "--":#1 down
-                MOVES.append(MOVE((i,j),(i+1,j),self.BOARD))
-                if i==1 and self.BOARD[i+2][j]=="--":#2 down
-                    MOVES.append(MOVE((i,j),(i+2,j),self.BOARD))
+                if not PINNED or PINDIR==(1,0):
+                    MOVES.append(MOVE((i,j),(i+1,j),self.BOARD))
+                    if i==1 and self.BOARD[i+2][j]=="--":#2 down
+                        MOVES.append(MOVE((i,j),(i+2,j),self.BOARD))
             if j-1>=0:#capture left
-                if self.BOARD[i+1][j-1][0]=='w': #capture
-                   MOVES.append(MOVE((i,j),(i+1,j-1),self.BOARD)) 
+                if not PINNED or PINDIR==(1,-1):
+                    if self.BOARD[i+1][j-1][0]=='w': #capture
+                        MOVES.append(MOVE((i,j),(i+1,j-1),self.BOARD)) 
             if j+1<=7:#capture right
-                if self.BOARD[i+1][j+1][0]=='w':
-                    MOVES.append(MOVE((i,j),(i+1,j+1),self.BOARD))
+                if not PINNED or PINDIR==(1,1):    
+                    if self.BOARD[i+1][j+1][0]=='w':
+                        MOVES.append(MOVE((i,j),(i+1,j+1),self.BOARD))
            
     def GETROOKMOVES(self,i,j,MOVES):
+        PINNED=False
+        PINDIR=() #pin direction
+        for x in range (len(self.PINNED)-1,-1,-1):
+            if self.PINNED[x][0]==i and self.PINNED[x][1]==j:
+                PINNED=True
+                PINDIR=(self.PINNED[x][2],self.PINNED[x][3])
+                self.PINNED.remove(self.PINNED[x])
+            break
         DIRECTIONS = ((-1,0),(0,-1),(1,0),(0,1))
         if self.WHITETOMOVE:
             ENEMY='b'
@@ -134,19 +214,28 @@ class GAMESTATE():
                 ENDROW = i + x[0] * z
                 ENDCOL = j + x[1] * z
                 if 0 <= ENDROW < 8 and 0 <= ENDCOL <8:
-                    ENDPIECE= self.BOARD[ENDROW][ENDCOL]
-                    if ENDPIECE =="--":#free move
-                        MOVES.append(MOVE((i,j),(ENDROW,ENDCOL),self.BOARD))
-                    elif ENDPIECE[0] == ENEMY:#capture
-                        MOVES.append(MOVE((i,j),(ENDROW,ENDCOL),self.BOARD))
-                        break
-                    else:
-                        break #same color
+                    if not PINNED or PINDIR==x or PINDIR==(-x[0],-x[1]): # move towards or away but still in pin line
+                        ENDPIECE= self.BOARD[ENDROW][ENDCOL]
+                        if ENDPIECE =="--":#free move
+                            MOVES.append(MOVE((i,j),(ENDROW,ENDCOL),self.BOARD))
+                        elif ENDPIECE[0] == ENEMY:#capture
+                            MOVES.append(MOVE((i,j),(ENDROW,ENDCOL),self.BOARD))
+                            break
+                        else:
+                            break #same color
                 else:
                     break#offboard
                 
     
     def GETBISHOPMOVES(self,i,j,MOVES):
+        PINNED=False
+        PINDIR=() #pin direction
+        for x in range (len(self.PINNED)-1,-1,-1):
+            if self.PINNED[x][0]==i and self.PINNED[x][1]==j:
+                PINNED=True
+                PINDIR=(self.PINNED[x][2],self.PINNED[x][3])
+                self.PINNED.remove(self.PINNED[x])
+            break
         DIRECTIONS = ((-1,-1),(-1,1),(1,-1),(1,1))
         if self.WHITETOMOVE:
             ENEMY='b'
@@ -157,18 +246,28 @@ class GAMESTATE():
                 ENDROW = i + x[0] * z
                 ENDCOL = j + x[1] * z
                 if 0 <= ENDROW < 8 and 0 <= ENDCOL <8:
-                    ENDPIECE= self.BOARD[ENDROW][ENDCOL]
-                    if ENDPIECE =="--":#free move
-                        MOVES.append(MOVE((i,j),(ENDROW,ENDCOL),self.BOARD))
-                    elif ENDPIECE[0] == ENEMY:#capture
-                        MOVES.append(MOVE((i,j),(ENDROW,ENDCOL),self.BOARD))
-                        break
-                    else:
-                        break #same color
+                    if not PINNED or PINDIR==x or PINDIR==(-x[0],-x[1]): # move towards or away but still in pin line
+                        ENDPIECE= self.BOARD[ENDROW][ENDCOL]
+                        if ENDPIECE =="--":#free move
+                            MOVES.append(MOVE((i,j),(ENDROW,ENDCOL),self.BOARD))
+                        elif ENDPIECE[0] == ENEMY:#capture
+                            MOVES.append(MOVE((i,j),(ENDROW,ENDCOL),self.BOARD))
+                            break
+                        else:
+                            break #same color
                 else:
                     break#offboard
-    
+                   
+                    
     def GETQUEENMOVES(self,i,j,MOVES):
+        PINNED=False
+        PINDIR=() #pin direction
+        for x in range (len(self.PINNED)-1,-1,-1):
+            if self.PINNED[x][0]==i and self.PINNED[x][1]==j:
+                PINNED=True
+                PINDIR=(self.PINNED[x][2],self.PINNED[x][3])
+                self.PINNED.remove(self.PINNED[x])
+            break
         DIRECTIONS = ((-1,-1),(-1,0),(-1,1),(0,-1),(0,+1),(1,-1),(1,0),(1,1))
         if self.WHITETOMOVE:
             ENEMY='b'
@@ -179,14 +278,15 @@ class GAMESTATE():
                 ENDROW = i + x[0] * z
                 ENDCOL = j + x[1] * z
                 if 0 <= ENDROW < 8 and 0 <= ENDCOL <8:
-                    ENDPIECE= self.BOARD[ENDROW][ENDCOL]
-                    if ENDPIECE =="--":#free move
-                        MOVES.append(MOVE((i,j),(ENDROW,ENDCOL),self.BOARD))
-                    elif ENDPIECE[0] == ENEMY:#capture
-                        MOVES.append(MOVE((i,j),(ENDROW,ENDCOL),self.BOARD))
-                        break
-                    else:
-                        break #same color
+                    if not PINNED or PINDIR==x or PINDIR==(-x[0],-x[1]): # move towards or away but still in pin line
+                        ENDPIECE= self.BOARD[ENDROW][ENDCOL]
+                        if ENDPIECE =="--":#free move
+                            MOVES.append(MOVE((i,j),(ENDROW,ENDCOL),self.BOARD))
+                        elif ENDPIECE[0] == ENEMY:#capture
+                            MOVES.append(MOVE((i,j),(ENDROW,ENDCOL),self.BOARD))
+                            break
+                        else:
+                            break #same color
                 else:
                     break#offboard
     
@@ -202,10 +302,25 @@ class GAMESTATE():
                 if 0 <= ENDROW < 8 and 0 <= ENDCOL <8:
                     ENDPIECE= self.BOARD[ENDROW][ENDCOL]
                     if ENDPIECE =="--" or ENDPIECE[0] == ENEMY:#free move
-                        MOVES.append(MOVE((i,j),(ENDROW,ENDCOL),self.BOARD))
-  
+                        if ENEMY=='b': #placing the king in the end location to check for checks
+                            self.WKINGLOC=(ENDROW,ENDCOL)
+                        else:
+                            self.BKINGLOC=(ENDROW,ENDCOL)
+                        INCHECK,PINNED,CHECKS=self.CHECKFORTHREATS() #using only INCHECK cause king cant be pinned and having 3 vars because thats how many return
+                        if not INCHECK:
+                            MOVES.append(MOVE((i,j),(ENDROW,ENDCOL),self.BOARD))
+                        if ENEMY=='b':
+                            self.WKINGLOC=(i,j)
+                        else:
+                            self.BKINGLOC=(i,j)
         
     def GETKNIGHTMOVES(self,i,j,MOVES):
+        PINNED=False #no need for directions since knights moves dont overlap with spaces it can get pinned
+        for x in range (len(self.PINNED)-1,-1,-1):
+            if self.PINNED[x][0]==i and self.PINNED[x][1]==j:
+                PINNED=True
+                self.PINNED.remove(self.PINNED[x])
+            break
         DIRECTIONS = ((-2,-1),(-2,1),(-1,-2),(-1,2),(1,-2),(1,2),(2,-1),(2,1))
         if self.WHITETOMOVE:
             ALLY='w'
@@ -215,9 +330,10 @@ class GAMESTATE():
                 ENDROW = i + x[0] 
                 ENDCOL = j + x[1] 
                 if 0 <= ENDROW < 8 and 0 <= ENDCOL <8:
-                    ENDPIECE= self.BOARD[ENDROW][ENDCOL]
-                    if ENDPIECE != ALLY:
-                        MOVES.append(MOVE((i,j),(ENDROW,ENDCOL),self.BOARD))
+                    if not PINNED:
+                        ENDPIECE= self.BOARD[ENDROW][ENDCOL]
+                        if ENDPIECE != ALLY:
+                            MOVES.append(MOVE((i,j),(ENDROW,ENDCOL),self.BOARD))
 
                     
         
