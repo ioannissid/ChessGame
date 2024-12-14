@@ -139,9 +139,12 @@ class GAMESTATE():
                         MOVES.append(MOVE((i,j),(ENDROW,ENDCOL),self.BOARD))
                     elif ENDPIECE[0] == ENEMY:#capture
                         MOVES.append(MOVE((i,j),(ENDROW,ENDCOL),self.BOARD))
-                        break#same color piece
+                        break
+                    else:
+                        break #same color
                 else:
                     break#offboard
+                
     
     def GETBISHOPMOVES(self,i,j,MOVES):
         DIRECTIONS = ((-1,-1),(-1,1),(1,-1),(1,1))
@@ -159,7 +162,9 @@ class GAMESTATE():
                         MOVES.append(MOVE((i,j),(ENDROW,ENDCOL),self.BOARD))
                     elif ENDPIECE[0] == ENEMY:#capture
                         MOVES.append(MOVE((i,j),(ENDROW,ENDCOL),self.BOARD))
-                        break#same color piece
+                        break
+                    else:
+                        break #same color
                 else:
                     break#offboard
     
@@ -179,7 +184,9 @@ class GAMESTATE():
                         MOVES.append(MOVE((i,j),(ENDROW,ENDCOL),self.BOARD))
                     elif ENDPIECE[0] == ENEMY:#capture
                         MOVES.append(MOVE((i,j),(ENDROW,ENDCOL),self.BOARD))
-                        break#same color piece
+                        break
+                    else:
+                        break #same color
                 else:
                     break#offboard
     
@@ -194,9 +201,7 @@ class GAMESTATE():
                 ENDCOL = j + x[1] 
                 if 0 <= ENDROW < 8 and 0 <= ENDCOL <8:
                     ENDPIECE= self.BOARD[ENDROW][ENDCOL]
-                    if ENDPIECE =="--":#free move
-                        MOVES.append(MOVE((i,j),(ENDROW,ENDCOL),self.BOARD))
-                    elif ENDPIECE[0] == ENEMY:#capture
+                    if ENDPIECE =="--" or ENDPIECE[0] == ENEMY:#free move
                         MOVES.append(MOVE((i,j),(ENDROW,ENDCOL),self.BOARD))
   
         
@@ -231,7 +236,6 @@ class MOVE():
         self.PIECEMOV =BOARD[self.STARTROW][self.STARTCOL]#piece moved
         self.PIECECAP= BOARD[self.ENDROW][self.ENDCOL]#piece captured
         self.MOVEID= self.STARTROW * 1000 + self.STARTCOL *100 + self.ENDROW*10+self.ENDCOL #unique
-        #print(self.MOVEID) #debug
         
     def __eq__(self,OTHER):
         if isinstance(OTHER,MOVE):

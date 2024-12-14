@@ -11,7 +11,7 @@ IMAGES = {}
 def LoadImage():
     PIECES= ['wP','wR','wN','wB','wQ','wK','bP','bR','bN','bB','bK','bQ']
     for PIECE in PIECES:
-        IMAGES[PIECE]=g.transform.scale(g.image.load("chess/Image/"+PIECE+".png"),(SQ_SIZE,SQ_SIZE))
+        IMAGES[PIECE]=g.transform.scale(g.image.load("Chess/Image/"+PIECE+".png"),(SQ_SIZE,SQ_SIZE))
 
 #Main driver to deal with user input and graphics
 def main():
