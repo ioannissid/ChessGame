@@ -33,7 +33,10 @@ class GAMESTATE():
             self.WKINGLOC = (MOVE.ENDROW,MOVE.ENDCOL)
         if MOVE.PIECEMOV == 'bK':
             self.BKINGLOC = (MOVE.ENDROW,MOVE.ENDCOL)
-    
+        if MOVE.PAWNPROMOTION:
+            self.BOARD[MOVE.ENDROW][MOVE.ENDCOL]= MOVE.PIECEMOV[0] + 'Q' #takes the color of the pawn and adds the Q which translates to e.g wQ which nmeans whiet queen
+            
+        
     def UNDOMOVE(self):
         if len(self.MOVELOG) != 0:
             MOVE = self.MOVELOG.pop()
@@ -78,6 +81,14 @@ class GAMESTATE():
                 self.GETKINGMOVES(KROW,KCOL,MOVES)
         else:
             MOVES = self.GETPOSSIBLEMOVES()                          
+        if len(MOVES) == 0:
+            if self.INCHECK:
+                self.CHECKMATE = True
+            else:
+                self.STALEMATE = True
+        else:
+            self.CHECKMATE = False
+            self.STALEMATE = False
         return MOVES
     
     
@@ -351,7 +362,12 @@ class MOVE():
         self.ENDCOL= END[1] #last selected collumn
         self.PIECEMOV =BOARD[self.STARTROW][self.STARTCOL]#piece moved
         self.PIECECAP= BOARD[self.ENDROW][self.ENDCOL]#piece captured
+        self.PAWNPROMOTION = False
+        if (self.PIECEMOV == 'wP' and self.ENDROW ==0) or (self.PIECEMOV=='bP' and self.ENDROW == 7): #doing it here to avoid writing it in 6 spots
+            self.PAWNPROMOTION = True
         self.MOVEID= self.STARTROW * 1000 + self.STARTCOL *100 + self.ENDROW*10+self.ENDCOL #unique
+        
+        
         
     def __eq__(self,OTHER):
         if isinstance(OTHER,MOVE):

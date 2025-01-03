@@ -43,12 +43,13 @@ def main():
                 if len(PLAYERCLICKS)==2 : #2nd click
                     MOVE = ChessEngine.MOVE(PLAYERCLICKS[0],PLAYERCLICKS[1],GAMESTATE.BOARD)
                     print (MOVE.GETCHESSNOTATION()) # debug
-                    if MOVE in VALIDMOVES:
-                        GAMESTATE.MAKEMOVE(MOVE)
-                        MOVEMADE=True
-                        SQSELECTED =() #resetting clicks
-                        PLAYERCLICKS= []
-                    else:
+                    for j in range(len(VALIDMOVES)): #takes the length of the validmoves
+                        if MOVE == VALIDMOVES[j]: #checks if the move is legal or not and then procceeds to either do it or not
+                            GAMESTATE.MAKEMOVE(VALIDMOVES[j])
+                            MOVEMADE=True
+                            SQSELECTED =() #resetting clicks
+                            PLAYERCLICKS= []
+                    if not MOVEMADE:
                         PLAYERCLICKS=[SQSELECTED]
             elif i.type==g.KEYDOWN:
                 if i.key== g.K_BACKSPACE: #undo with backspace
