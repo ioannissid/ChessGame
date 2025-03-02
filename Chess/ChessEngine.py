@@ -23,6 +23,7 @@ class GAMESTATE():
         INCHECK=False
         self.PINNED=[]
         self.CHECKS=[]
+        self.ENPASSANTPOSSIBLE=() #coordinates for enpassant possible capture
         
     def MAKEMOVE(self,MOVE):
         self.BOARD[MOVE.STARTROW][MOVE.STARTCOL] = "--"
@@ -33,9 +34,17 @@ class GAMESTATE():
             self.WKINGLOC = (MOVE.ENDROW,MOVE.ENDCOL)
         if MOVE.PIECEMOV == 'bK':
             self.BKINGLOC = (MOVE.ENDROW,MOVE.ENDCOL)
-        if MOVE.PAWNPROMOTION:
-            self.BOARD[MOVE.ENDROW][MOVE.ENDCOL]= MOVE.PIECEMOV[0] + 'Q' #takes the color of the pawn and adds the Q which translates to e.g wQ which nmeans whiet queen
+        if MOVE.PIECEMOV[1]=='P' and abs(MOVE.STARTROW-MOVE.ENDROW)==2:
+            self.ENPASSANTPOSSIBLE=((MOVE.ENDROW+MOVE.STARTROW)//2,MOVE.ENDCOL)
+        else:
+            self.ENPASSANTPOSSIBLE=()
             
+        if MOVE.ENPASSANT:
+            self.BOARD[MOVE.STARTROW][MOVE.ENDCOL] ="--"
+        
+        if MOVE.PAWNPROMOTION:
+            PROMOTEDPIECE= input("Promote to Q,R,B or N:")
+            self.board[MOVE.ENDROW][MOVE.ENDCOL]=MOVE.PIECEMOV[0]+ PROMOTEDPIECE
         
     def UNDOMOVE(self):
         if len(self.MOVELOG) != 0:
@@ -47,6 +56,15 @@ class GAMESTATE():
                 self.WKINGLOC = (MOVE.STARTROW,MOVE.STARTCOL)
             if MOVE.PIECEMOV == 'bK':
                 self.BKINGLOC = (MOVE.STARTROW,MOVE.STARTCOL)
+            
+            if MOVE.ENPASSANT:
+                self.BOARD[MOVE.ENDROW][MOVE.ENDCOL] = '--' #leave the captured square blank
+                self.BOARD[MOVE.STARTROW][MOVE.ENDCOL]=MOVE.PIECECAP
+                self.ENPASSANTPOSSIBLE=(MOVE.ENDROW, MOVE.ENDCOL) # to be able to do it again after undo
+             
+            if MOVE.PIECEMOV[1] == 'P' and abs(MOVE.STARTROW - MOVE.ENDROW) == 2:
+                self.ENPASSANTPOSSIBLE= ()
+             
                 
     def GETVALIDMOVES(self):
         MOVES=[]
@@ -168,44 +186,57 @@ class GAMESTATE():
         return MOVES
     
     
-    def GETPAWNMOVES(self,i,j,MOVES):
-        PINNED=False
-        PINDIR=() #pin direction
-        for x in range (len(self.PINNED)-1,-1,-1):
-            if self.PINNED[x][0]==i and self.PINNED[x][1]==j:
-                PINNED=True
-                PINDIR=(self.PINNED[x][2],self.PINNED[x][3])
+    def GETPAWNMOVES(self, i, j, MOVES):
+        PINNED = False
+        PINDIR = ()  # pin direction
+        for x in range(len(self.PINNED) - 1, -1, -1):
+            if self.PINNED[x][0] == i and self.PINNED[x][1] == j:
+                PINNED = True
+                PINDIR = (self.PINNED[x][2], self.PINNED[x][3])
                 self.PINNED.remove(self.PINNED[x])
             break
         if self.WHITETOMOVE:
-            if self.BOARD[i-1][j]== "--":#1 up
-                if not PINNED or PINDIR==(-1,0):
-                    MOVES.append(MOVE((i,j),(i-1,j),self.BOARD))
-                    if i==6 and self.BOARD[i-2][j]=="--":#2 up
-                        MOVES.append(MOVE((i,j),(i-2,j),self.BOARD))
-            if j-1>=0:#capture left
-                if not PINNED or PINDIR==(-1,-1): 
-                    if self.BOARD[i-1][j-1][0]=='b': #capture
-                        MOVES.append(MOVE((i,j),(i-1,j-1),self.BOARD)) 
-            if j+1<=7:#capture right
-                if not PINNED or PINDIR==(-1,1):   
-                    if self.BOARD[i-1][j+1][0]=='b':
-                        MOVES.append(MOVE((i,j),(i-1,j+1),self.BOARD))
+            MOVEAMOUNT = -1
+            STARTROW = 6
+            BACKROW = 0
+            ENEMY = 'b'
         else:
-            if self.BOARD[i+1][j]== "--":#1 down
-                if not PINNED or PINDIR==(1,0):
-                    MOVES.append(MOVE((i,j),(i+1,j),self.BOARD))
-                    if i==1 and self.BOARD[i+2][j]=="--":#2 down
-                        MOVES.append(MOVE((i,j),(i+2,j),self.BOARD))
-            if j-1>=0:#capture left
-                if not PINNED or PINDIR==(1,-1):
-                    if self.BOARD[i+1][j-1][0]=='w': #capture
-                        MOVES.append(MOVE((i,j),(i+1,j-1),self.BOARD)) 
-            if j+1<=7:#capture right
-                if not PINNED or PINDIR==(1,1):    
-                    if self.BOARD[i+1][j+1][0]=='w':
-                        MOVES.append(MOVE((i,j),(i+1,j+1),self.BOARD))
-           
+            MOVEAMOUNT = 1
+            STARTROW = 1
+            BACKROW = 7
+            ENEMY = 'w'
+        PAWNPROMOTION = False
+
+        if self.BOARD[i + MOVEAMOUNT][j] == "--":  # 1 square
+            if not PINNED or PINDIR == (MOVEAMOUNT, 0):
+                if i + MOVEAMOUNT == BACKROW:
+                    PAWNPROMOTION = True
+                MOVES.append(MOVE((i, j), (i + MOVEAMOUNT, j), self.BOARD, PAWNPROMOTION=PAWNPROMOTION))
+                if i == STARTROW and self.BOARD[i + 2 * MOVEAMOUNT][j] == "--":  # 2 square
+                    MOVES.append(MOVE((i, j), (i + 2 * MOVEAMOUNT, j), self.BOARD))
+
+        if j - 1 >= 0:  # left capture
+            if not PINNED or PINDIR == (MOVEAMOUNT, -1):
+                if self.BOARD[i + MOVEAMOUNT][j - 1][0] == ENEMY:
+                    if i + MOVEAMOUNT == BACKROW:  # backrank with capture
+                        PAWNPROMOTION = True
+                    MOVES.append(MOVE((i, j), (i + MOVEAMOUNT, j - 1), self.BOARD, PAWNPROMOTION=PAWNPROMOTION))
+                if (i + MOVEAMOUNT, j - 1) == self.ENPASSANTPOSSIBLE:
+                    MOVES.append(MOVE((i, j), (i + MOVEAMOUNT, j - 1), self.BOARD, ENPASSANT=True))
+
+        if j + 1 <= 7:  # right capture
+            if not PINNED or PINDIR == (MOVEAMOUNT, 1):
+                if self.BOARD[i + MOVEAMOUNT][j + 1][0] == ENEMY:
+                    if i + MOVEAMOUNT == BACKROW:  # backrank with capture
+                        PAWNPROMOTION = True
+                    MOVES.append(MOVE((i, j), (i + MOVEAMOUNT, j + 1), self.BOARD, PAWNPROMOTION=PAWNPROMOTION))
+                if (i + MOVEAMOUNT, j + 1) == self.ENPASSANTPOSSIBLE:
+                    MOVES.append(MOVE((i, j), (i + MOVEAMOUNT, j + 1), self.BOARD, ENPASSANT=True))
+
+        
+        
+        
+        
     def GETROOKMOVES(self,i,j,MOVES):
         PINNED=False
         PINDIR=() #pin direction
@@ -355,16 +386,19 @@ class MOVE():
     ROWSTORANKS= {i: j for j, i in RANKSTOROWS.items()}
     FILESTOCOLS={"a":0,"b":1,"c":2,"d":3,"e":4,"f":5,"g":6,"h":7}
     COLSTOFILES={i:j for j, i in FILESTOCOLS.items()}
-    def __init__(self,START,END,BOARD): #starting square ,ending square and board state
+    def __init__(self,START,END,BOARD,PAWNPROMOTION=False, ENPASSANT=False): #starting square ,ending square and board state and an optional parameter that changes depending on if its given value or not
         self.STARTROW= START[0] #initial selected row
         self.STARTCOL= START[1] #initial selected collumn
         self.ENDROW= END[0] #last selected row
         self.ENDCOL= END[1] #last selected collumn
         self.PIECEMOV =BOARD[self.STARTROW][self.STARTCOL]#piece moved
         self.PIECECAP= BOARD[self.ENDROW][self.ENDCOL]#piece captured
-        self.PAWNPROMOTION = False
-        if (self.PIECEMOV == 'wP' and self.ENDROW ==0) or (self.PIECEMOV=='bP' and self.ENDROW == 7): #doing it here to avoid writing it in 6 spots
-            self.PAWNPROMOTION = True
+        self.PAWNPROMOTION = PAWNPROMOTION #doing it here to avoid writing it in 6 spots
+           
+        self.ENPASSANT=ENPASSANT
+        if self.ENPASSANT:
+            self.PIECECAP= 'bP' if self.PIECEMOV=='wP' else 'wP'
+        
         self.MOVEID= self.STARTROW * 1000 + self.STARTCOL *100 + self.ENDROW*10+self.ENDCOL #unique
         
         

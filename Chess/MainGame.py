@@ -44,7 +44,7 @@ def main():
                     MOVE = ChessEngine.MOVE(PLAYERCLICKS[0],PLAYERCLICKS[1],GAMESTATE.BOARD)
                     print (MOVE.GETCHESSNOTATION()) # debug
                     for j in range(len(VALIDMOVES)): #takes the length of the validmoves
-                        if MOVE == VALIDMOVES[j]: #checks if the move is legal or not and then procceeds to either do it or not
+                        if MOVE == VALIDMOVES[j]: #checks if the move is legal or not and then procceeds to either do it
                             GAMESTATE.MAKEMOVE(VALIDMOVES[j])
                             MOVEMADE=True
                             SQSELECTED =() #resetting clicks
