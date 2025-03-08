@@ -1,6 +1,5 @@
-
 #Drive file with user input and displaying the gamestate.
-import pygame as g #shortcut for game cause writing pygame over and over became tedious
+import pygame as G #shortcut for game cause writing pygame over and over became tedious
 import ChessEngine
 HEIGHT = WIDTH = 640 #pieces are 60x60
 DIMENSION = 8 #board dimensions
@@ -11,14 +10,55 @@ IMAGES = {}
 def LoadImage():
     PIECES= ['wP','wR','wN','wB','wQ','wK','bP','bR','bN','bB','bK','bQ']
     for PIECE in PIECES:
-        IMAGES[PIECE]=g.transform.scale(g.image.load("Chess/Image/"+PIECE+".png"),(SQ_SIZE,SQ_SIZE))
+        IMAGES[PIECE]=G.transform.scale(G.image.load("Chess/Image/"+PIECE+".png"),(SQ_SIZE,SQ_SIZE))
+
+
+def GET_PROMOTION_CHOICE(SCREEN, COLOR):    #Displays promotion choices as images and returns the chosen piece.
+
+    CHOICES = ['Q', 'R', 'B', 'N']
+    RECTS = []
+    BUTTON_WIDTH = SQ_SIZE  # Use square size for button width
+    BUTTON_HEIGHT = SQ_SIZE  # Use square size for button height
+    START_X = WIDTH // 2 - (BUTTON_WIDTH * len(CHOICES)) // 2
+    START_Y = HEIGHT // 2
+
+    for I, CHOICE in enumerate(CHOICES):
+        X = START_X + I * BUTTON_WIDTH
+        Y = START_Y
+        RECT = G.Rect(X, Y, BUTTON_WIDTH, BUTTON_HEIGHT)
+        RECTS.append(RECT)
+
+    while True:
+        for EVENT in G.event.get():
+            if EVENT.type == G.QUIT:
+                G.quit()
+                exit()
+            if EVENT.type == G.MOUSEBUTTONDOWN:
+                for I, RECT in enumerate(RECTS):
+                    if RECT.collidepoint(EVENT.pos):
+                        return CHOICES[I]  # Return the chosen piece
+
+        # Draw the promotion choices
+        G.draw.rect(SCREEN, (255, 255, 255), (START_X - 10, START_Y - 10, BUTTON_WIDTH * len(CHOICES) + 20, BUTTON_HEIGHT + 20))  # Clear area
+        for I, CHOICE in enumerate(CHOICES):
+            G.draw.rect(SCREEN, (200, 200, 200), RECTS[I])  # Button background
+            PIECE_IMAGE = IMAGES[COLOR + CHOICE]  # Get the piece image
+            SCREEN.blit(PIECE_IMAGE, RECTS[I])  # Blit the image onto the button
+
+        G.display.flip()
+
+def GET_AI_PROMOTION_CHOICE(GAMESTATE, MOVE):
+    """Analyzes the board and returns the optimal promotion piece for the AI."""
+    # This is a placeholder for a more sophisticated AI.
+    # For now, let's just promote to a Queen.
+    return 'Q'
 
 #Main driver to deal with user input and graphics
 def main():
-    g.init()
-    SCREEN= g.display.set_mode((WIDTH,HEIGHT))
-    CLOCK=g.time.Clock()
-    SCREEN.fill(g.Color("white"))
+    G.init()
+    SCREEN= G.display.set_mode((WIDTH,HEIGHT))
+    CLOCK=G.time.Clock()
+    SCREEN.fill(G.Color("white"))
     GAMESTATE= ChessEngine.GAMESTATE()
     LoadImage()# only once
     RUNNING = True
@@ -26,12 +66,14 @@ def main():
     PLAYERCLICKS= [] # keeps tract of the total clicks so it can move the pieces
     VALIDMOVES = GAMESTATE.GETVALIDMOVES()
     MOVEMADE = False #flag for when a move is made
+    HUMANPLAYSWHITE = True  # Or False, depending on your game setup
+
     while RUNNING:
-        for i in g.event.get():
-            if i.type==g.QUIT:
+        for I in G.event.get():
+            if I.type==G.QUIT:
                 RUNNING=False
-            elif i.type == g.MOUSEBUTTONDOWN: # <------- START OF MOUSE HANDLING
-                LOCATION = g.mouse.get_pos()
+            elif I.type == G.MOUSEBUTTONDOWN: # <------- START OF MOUSE HANDLING
+                LOCATION = G.mouse.get_pos()
                 COL = LOCATION[0]//SQ_SIZE
                 ROW = LOCATION[1]//SQ_SIZE
                 if SQSELECTED== (ROW,COL): #same square pick
@@ -40,19 +82,36 @@ def main():
                 else:
                     SQSELECTED= (ROW,COL)
                     PLAYERCLICKS.append(SQSELECTED)
-                if len(PLAYERCLICKS)==2 : #2nd click
-                    MOVE = ChessEngine.MOVE(PLAYERCLICKS[0],PLAYERCLICKS[1],GAMESTATE.BOARD)
+                if len(PLAYERCLICKS) == 2:
+                    MOVE = ChessEngine.MOVE(PLAYERCLICKS[0], PLAYERCLICKS[1], GAMESTATE.BOARD)
+                    MOVE.PAWNPROMOTION = MOVE.IsPawnPromotion()  # ADD THIS LINE!
                     print (MOVE.GETCHESSNOTATION()) # debug
-                    for j in range(len(VALIDMOVES)): #takes the length of the validmoves
-                        if MOVE == VALIDMOVES[j]: #checks if the move is legal or not and then procceeds to either do it
-                            GAMESTATE.MAKEMOVE(VALIDMOVES[j])
-                            MOVEMADE=True
-                            SQSELECTED =() #resetting clicks
-                            PLAYERCLICKS= []
-                    if not MOVEMADE:
-                        PLAYERCLICKS=[SQSELECTED]
-            elif i.type==g.KEYDOWN:
-                if i.key== g.K_BACKSPACE: #undo with backspace
+                    print(f"MOVE.PAWNPROMOTION after IsPawnPromotion: {MOVE.PAWNPROMOTION}")  # Debug print
+
+                    # Check if it's the human player's turn
+                    if (GAMESTATE.WHITETOMOVE and HUMANPLAYSWHITE) or (not GAMESTATE.WHITETOMOVE and not HUMANPLAYSWHITE):
+                        SHOW_PROMOTION_POPUP = True  # Human player's turn
+                    else:
+                        SHOW_PROMOTION_POPUP = False  # AI's turn
+
+                    for J in range(len(VALIDMOVES)):
+                        if MOVE == VALIDMOVES[J]:
+                            print("Move is valid") #debug
+                            if MOVE.PAWNPROMOTION and SHOW_PROMOTION_POPUP:  # Only show popup for human
+                                PROMOTED_PIECE = GET_PROMOTION_CHOICE(SCREEN, MOVE.PIECEMOV[0]) # Use correct case
+                                GAMESTATE.MAKEMOVE(MOVE, PROMOTEDPIECE=PROMOTED_PIECE)
+                            elif MOVE.PAWNPROMOTION and not SHOW_PROMOTION_POPUP:  # AI promotes
+                                PROMOTED_PIECE = GET_AI_PROMOTION_CHOICE(GAMESTATE, MOVE)  # Get AI choice
+                                GAMESTATE.MAKEMOVE(MOVE, PROMOTEDPIECE=PROMOTED_PIECE)
+                            else:
+                                GAMESTATE.MAKEMOVE(MOVE)
+                            MOVEMADE = True
+                            SQSELECTED = ()
+                            PLAYERCLICKS = []
+                if not MOVEMADE:
+                    PLAYERCLICKS = [SQSELECTED]
+            elif I.type==G.KEYDOWN:
+                if I.key== G.K_BACKSPACE: #undo with backspace
                     if len(GAMESTATE.MOVELOG) != 0:
                         print("Move has been undone")
                     else:
@@ -65,7 +124,7 @@ def main():
             MOVEMADE=False
         DrawGameState(SCREEN,GAMESTATE)
         CLOCK.tick(MAX_FPS)
-        g.display.flip()
+        G.display.flip()
         
 
 #Draw the board and everything else
@@ -75,25 +134,18 @@ def DrawGameState(SCREEN,GAMESTATE):
 
 def DrawBoard(SCREEN):
     COLORS=[(247, 203, 161),(77, 36, 0)]
-    for i in range(DIMENSION):
-        for j in range(DIMENSION):
-            COLOR = COLORS[(i + j) % 2] 
-            g.draw.rect(SCREEN, COLOR, g.Rect(j * SQ_SIZE, i * SQ_SIZE, SQ_SIZE, SQ_SIZE))
+    for I in range(DIMENSION):
+        for J in range(DIMENSION):
+            COLOR = COLORS[(I + J) % 2] 
+            G.draw.rect(SCREEN, COLOR, G.Rect(J * SQ_SIZE, I * SQ_SIZE, SQ_SIZE, SQ_SIZE))
     
 def DrawPieces(SCREEN,BOARD):
-    for i in range(DIMENSION):
-        for j in range(DIMENSION):
-            PIECE= BOARD[i][j]
+    for I in range(DIMENSION):
+        for J in range(DIMENSION):
+            PIECE= BOARD[I][J]
             if PIECE != "--": #not empty
-               SCREEN.blit(IMAGES[PIECE],g.Rect(j*SQ_SIZE,i*SQ_SIZE,SQ_SIZE,SQ_SIZE)) 
+               SCREEN.blit(IMAGES[PIECE],G.Rect(J*SQ_SIZE,I*SQ_SIZE,SQ_SIZE,SQ_SIZE)) 
             
                 
 if __name__=="__main__":
     main()
-
-
-
-
-
-
-

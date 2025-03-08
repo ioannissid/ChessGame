@@ -24,8 +24,10 @@ class GAMESTATE():
         self.PINNED=[]
         self.CHECKS=[]
         self.ENPASSANTPOSSIBLE=() #coordinates for enpassant possible capture
+        self.PAWNPROMOTION=False
         
-    def MAKEMOVE(self,MOVE):
+        
+    def MAKEMOVE(self,MOVE,PROMOTEDPIECE=None):
         self.BOARD[MOVE.STARTROW][MOVE.STARTCOL] = "--"
         self.BOARD[MOVE.ENDROW][MOVE.ENDCOL] = MOVE.PIECEMOV
         self.MOVELOG.append(MOVE) #Log move
@@ -43,9 +45,9 @@ class GAMESTATE():
             self.BOARD[MOVE.STARTROW][MOVE.ENDCOL] ="--"
         
         if MOVE.PAWNPROMOTION:
-            PROMOTEDPIECE= input("Promote to Q,R,B or N:")
-            self.board[MOVE.ENDROW][MOVE.ENDCOL]=MOVE.PIECEMOV[0]+ PROMOTEDPIECE
-        
+            if PROMOTEDPIECE is None:
+                PROMOTEDPIECE = 'Q'  # Default to Queen if no choice is made
+            self.BOARD[MOVE.ENDROW][MOVE.ENDCOL] = MOVE.PIECEMOV[0] + PROMOTEDPIECE        
     def UNDOMOVE(self):
         if len(self.MOVELOG) != 0:
             MOVE = self.MOVELOG.pop()
@@ -412,3 +414,9 @@ class MOVE():
         
     def GETRANKFILE(self,RANK,COL):
         return self.COLSTOFILES[COL]+self.ROWSTORANKS[RANK]
+    def IsPawnPromotion(self):  # ADD THIS METHOD
+        if self.PIECEMOV[1] == 'P':  # It's a pawn move
+            if (self.PIECEMOV[0] == 'w' and self.ENDROW == 0) or \
+               (self.PIECEMOV[0] == 'b' and self.ENDROW == 7):  # Reached back rank
+                return True
+        return False
