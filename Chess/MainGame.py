@@ -48,9 +48,9 @@ def GET_PROMOTION_CHOICE(SCREEN, COLOR):    #Displays promotion choices as image
         G.display.flip()
 
 def GET_AI_PROMOTION_CHOICE(GAMESTATE, MOVE):
-    """Analyzes the board and returns the optimal promotion piece for the AI."""
+
     # This is a placeholder for a more sophisticated AI.
-    # For now, let's just promote to a Queen.
+
     return 'Q'
 
 #Main driver to deal with user input and graphics

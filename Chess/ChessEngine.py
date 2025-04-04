@@ -13,18 +13,20 @@ class GAMESTATE():
             ["--","--","--","--","--","--","--","--"],
             ["--","--","--","--","--","--","--","--"],
             ["wP","wP","wP","wP","wP","wP","wP","wP"],
-            ["wR","wN","wB","wQ","wK","wB","wN","wR"]]
+            ["wR","--","--","--","wK","--","--","wR"]]
         self.WHITETOMOVE = True
         self.MOVELOG=[]
         self.WKINGLOC= (7,4)
         self.BKINGLOC= (0,4)
         self.CHECKMATE= False
         self.STALEMATE= False
-        INCHECK=False
+        self.INCHECK=False
         self.PINNED=[]
         self.CHECKS=[]
         self.ENPASSANTPOSSIBLE=() #coordinates for enpassant possible capture
         self.PAWNPROMOTION=False
+        self.CURRENTCASTLERIGHTS=CASTLERIGHTS(True,True,True,True) #checks if the pawns have moved
+        self.CASTLERIGHTSLOG=[CASTLERIGHTS(self.CURRENTCASTLERIGHTS.WKS,self.CURRENTCASTLERIGHTS.BKS,self.CURRENTCASTLERIGHTS.WQS,self.CURRENTCASTLERIGHTS.BQS)] #log of castlerights
         
         
     def MAKEMOVE(self,MOVE,PROMOTEDPIECE=None):
@@ -48,6 +50,22 @@ class GAMESTATE():
             if PROMOTEDPIECE is None:
                 PROMOTEDPIECE = 'Q'  # Default to Queen if no choice is made
             self.BOARD[MOVE.ENDROW][MOVE.ENDCOL] = MOVE.PIECEMOV[0] + PROMOTEDPIECE        
+
+        if MOVE.ISCASTLE:
+            self.BOARD[7,7] = "--"
+
+
+#updating castle rights 
+        self.UPDATECASTLERIGHTS(MOVE)
+        self.CASTLERIGHTSLOG.append(CASTLERIGHTS(self.CURRENTCASTLERIGHTS.WKS,self.CURRENTCASTLERIGHTS.BKS,self.CURRENTCASTLERIGHTS.WQS,self.CURRENTCASTLERIGHTS.BQS)) #log of castlerights
+
+        
+        
+        
+   
+   
+   
+   
     def UNDOMOVE(self):
         if len(self.MOVELOG) != 0:
             MOVE = self.MOVELOG.pop()
@@ -66,11 +84,59 @@ class GAMESTATE():
              
             if MOVE.PIECEMOV[1] == 'P' and abs(MOVE.STARTROW - MOVE.ENDROW) == 2:
                 self.ENPASSANTPOSSIBLE= ()
+            
+            self.CASTLERIGHTSLOG.pop() #removing the new castle rights from the move that is being undone
+            self.CURRENTCASTLERIGHTS = self.CASTLERIGHTSLOG[-1]#setting the castle rights to the last one in the log 
+            if MOVE.ISCASTLE:
+                if MOVE.ENDCOL - MOVE.STARTCOL == 2:
+                    self.BOARD[MOVE.ENDROW][7] = self.BOARD[MOVE.ENDROW][MOVE.ENDCOL-1]#undoing the rook
+                    self.BOARD[MOVE.ENDROW][MOVE.ENDCOL-1] = "--" #delete old rook
+                else:
+                    self.BOARD[MOVE.ENDROW][0] = self.BOARD[MOVE.ENDROW][MOVE.ENDCOL+1]
+                    self.BOARD[MOVE.ENDROW][MOVE.ENDCOL+1] = "--" #delete old rook
+            
              
-                
+    def UPDATECASTLERIGHTS(self,MOVE):#update the castle rigts after it takes the move
+        if MOVE.PIECECAP == 'wR':
+            if MOVE.ENDCOL == 0:
+                self.CURRENTCASTLERIGHTS.WQS = False
+            elif MOVE.ENDCOL == 7:
+                self.CURRENTCASTLERIGHTS.WKS = False
+        if MOVE.PIECECAP == 'bR':
+            if MOVE.ENDCOL == 0:
+                self.CURRENTCASTLERIGHTS.BQS = False
+            elif MOVE.ENDCOL == 7:
+                self.CURRENTCASTLERIGHTS.BKS = False
+        
+        
+        if MOVE.PIECEMOV == 'wK':
+            self.CURRENTCASTLERIGHTS.WKS = False
+            self.CURRENTCASTLERIGHTS.WQS = False
+        elif MOVE.PIECEMOV == 'bK':
+            self.CURRENTCASTLERIGHTS.BKS = False
+            self.CURRENTCASTLERIGHTS.BQS = False
+        elif MOVE.PIECEMOV == 'wR':
+            if MOVE.STARTROW == 7:
+                if MOVE.STARTCOL == 0:
+                    self.CURRENTCASTLERIGHTS.WQS = False
+                elif MOVE.STARTCOL == 7:
+                    self.CURRENTCASTLERIGHTS.WKS = False
+        elif MOVE.PIECEMOV == 'bR': 
+                if MOVE.STARTROW == 0:
+                    if MOVE.STARTCOL == 0:
+                        self.CURRENTCASTLERIGHTS.BQS = False
+                    elif MOVE.STARTCOL == 7:
+                         self.CURRENTCASTLERIGHTS.BKS = False
+                     
+                    
+                    
+                    
     def GETVALIDMOVES(self):
+      
+        TEMPCASTLERIGHTS= CASTLERIGHTS(self.CURRENTCASTLERIGHTS.WKS,self.CURRENTCASTLERIGHTS.WQS,self.CURRENTCASTLERIGHTS.BKS,self.CURRENTCASTLERIGHTS.BQS)
         MOVES=[]
-        self.INCHECK,self.PINNED,self.CHECKS = self.CHECKFORTHREATS()
+        self.INCHECK,self.PINNED,self.CHECKS = self.CHECKFORTHREATS() 
+        
         if self.WHITETOMOVE:
             KROW=self.WKINGLOC[0]
             KCOL=self.WKINGLOC[1]
@@ -101,6 +167,12 @@ class GAMESTATE():
                 self.GETKINGMOVES(KROW,KCOL,MOVES)
         else:
             MOVES = self.GETPOSSIBLEMOVES()                          
+            if self.WHITETOMOVE:
+                self.GETCASTLEMOVES(self.WKINGLOC[0],self.WKINGLOC[1],MOVES)
+            else:
+                self.GETCASTLEMOVES(self.BKINGLOC[0],self.BKINGLOC[1],MOVES)
+        
+        
         if len(MOVES) == 0:
             if self.INCHECK:
                 self.CHECKMATE = True
@@ -109,6 +181,7 @@ class GAMESTATE():
         else:
             self.CHECKMATE = False
             self.STALEMATE = False
+        self.CURRENTCASTLERIGHTS=TEMPCASTLERIGHTS
         return MOVES
     
     
@@ -165,6 +238,17 @@ class GAMESTATE():
                     INCHECK=True
                     CHECKS.append((ENDROW,ENDCOL,y[0],y[1]))
         return INCHECK,PINNED,CHECKS
+    
+    
+    def SQUAREUNDERATTACK(self,ROW,COL):
+        self.WHITETOMOVE = not self.WHITETOMOVE #switch to check if enemy can attack those squares
+        ENEMYMOVES = self.GETPOSSIBLEMOVES()
+        self.WHITETOMOVE = not self.WHITETOMOVE #switch turns back
+        for MOVE in ENEMYMOVES:
+            if MOVE.ENDROW == ROW and MOVE.ENDCOL == COL:
+                return True
+        return False
+    
                                             
     def GETPOSSIBLEMOVES(self):
         MOVES= []
@@ -380,7 +464,34 @@ class GAMESTATE():
                             MOVES.append(MOVE((i,j),(ENDROW,ENDCOL),self.BOARD))
 
                     
+    def GETCASTLEMOVES(self,i,j,MOVES):#castle moves                    
+        if self.SQUAREUNDERATTACK(i,j):
+            return #cant castle while in check
+        if (self.WHITETOMOVE and self.CURRENTCASTLERIGHTS.WKS) or (not self.WHITETOMOVE and self.CURRENTCASTLERIGHTS.BKS):  
+            self.KINGSIDECASTLEMOVES(i,j,MOVES)
+        if (self.WHITETOMOVE and self.CURRENTCASTLERIGHTS.WQS) or (not self.WHITETOMOVE and self.CURRENTCASTLERIGHTS.BQS):
+            self.QUEENSIDECASTLEMOVES(i,j,MOVES)
         
+        
+        
+        
+    def KINGSIDECASTLEMOVES(self,i,j,MOVES):              
+        if self.BOARD[i][j+1] == "--" and self.BOARD[i][j+2] == "--":
+            if not self.SQUAREUNDERATTACK(i,j+1) and not self.SQUAREUNDERATTACK(i,j+2):
+                MOVES.append(MOVE((i,j),(i,j+2),self.BOARD, ISCASTLE=True))
+
+
+    def QUEENSIDECASTLEMOVES(self,i,j,MOVES):
+        if self.BOARD[i][j-1] == "--" and self.BOARD[i][j-2] == "--" and self.BOARD[i][j-3] == "--":
+            if not self.SQUAREUNDERATTACK(i,j-1) and not self.SQUAREUNDERATTACK(i,j-2):
+                MOVES.append(MOVE((i,j),(i,j-2),self.BOARD, ISCASTLE=True))
+                    
+class CASTLERIGHTS(): 
+    def __init__(self,WKS,WQS,BKS,BQS):
+        self.WKS=WKS
+        self.WQS=WQS
+        self.BKS=BKS
+        self.BQS=BQS     
     
 class MOVE(): 
     #chess dictionary to map keys to values
@@ -388,7 +499,7 @@ class MOVE():
     ROWSTORANKS= {i: j for j, i in RANKSTOROWS.items()}
     FILESTOCOLS={"a":0,"b":1,"c":2,"d":3,"e":4,"f":5,"g":6,"h":7}
     COLSTOFILES={i:j for j, i in FILESTOCOLS.items()}
-    def __init__(self,START,END,BOARD,PAWNPROMOTION=False, ENPASSANT=False): #starting square ,ending square and board state and an optional parameter that changes depending on if its given value or not
+    def __init__(self,START,END,BOARD,PAWNPROMOTION=False, ENPASSANT=False, ISCASTLE=False): #starting square ,ending square and board state and an optional parameter that changes depending on if its given value or not
         self.STARTROW= START[0] #initial selected row
         self.STARTCOL= START[1] #initial selected collumn
         self.ENDROW= END[0] #last selected row
@@ -402,7 +513,7 @@ class MOVE():
             self.PIECECAP= 'bP' if self.PIECEMOV=='wP' else 'wP'
         
         self.MOVEID= self.STARTROW * 1000 + self.STARTCOL *100 + self.ENDROW*10+self.ENDCOL #unique
-        
+        self.ISCASTLE=ISCASTLE
         
         
     def __eq__(self,OTHER):
