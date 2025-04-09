@@ -178,7 +178,7 @@ class GAMESTATE:
                 self.GETCASTLEMOVES(self.BKINGLOC[0], self.BKINGLOC[1], MOVES)
 
         if len(MOVES) == 0:
-            if self.INCHECK():
+            if self.INCHECK:
                 self.CHECKMATE = True
             else:
                 self.STALEMATE = True
