@@ -1,6 +1,7 @@
 #Drive file with user input and displaying the gamestate.
 import pygame as G #shortcut for game cause writing pygame over and over became tedious
 import ChessEngine
+import ChessAI
 WIDTH = HEIGHT = 640 #pieces are 60x60
 DIMENSION = 8 #board dimensions
 SQ_SIZE= HEIGHT // DIMENSION #square size so it can be changed if i decide to change the size of the window so it can autochange
@@ -28,13 +29,25 @@ def main():
     GAMEOVER= False #flag for game over
     
     
+    HUMANISWHITE= True #if the human is white or false if the human is playing black
+    AIISWHITE= False #if the AI is white or false if the AI is playing black
+    
+    
+    
+    
     
     while RUNNING:
+        
+        HUMANTURN= (GAMESTATE.WHITETOMOVE and HUMANISWHITE) or (not GAMESTATE.WHITETOMOVE and not HUMANISWHITE) #if its the human turn or not
+        
+        
+        
+    
         for I in G.event.get():
             if I.type == G.QUIT:
                 RUNNING = False
             elif I.type == G.MOUSEBUTTONDOWN: # <------- START OF MOUSE HANDLING
-                if not GAMEOVER:
+                if not GAMEOVER and HUMANTURN:
                     LOCATION = G.mouse.get_pos() 
                     COL = LOCATION[0] // SQ_SIZE
                     ROW = LOCATION[1] // SQ_SIZE
@@ -81,7 +94,16 @@ def main():
                     RUNNING=False
                     
                     
-                    
+        #ai logic
+        if not HUMANTURN and not GAMEOVER:
+            AIMOVE= ChessAI.FINDRANDOMMOVE(VALIDMOVES) #find a random move from the list of valid moves
+            GAMESTATE.MAKEMOVE(AIMOVE)
+            MOVEMADE=True
+            ANIMATE=True
+        
+        
+        
+                   
                     
                     
         if MOVEMADE:
