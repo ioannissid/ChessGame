@@ -29,7 +29,7 @@ def main():
     GAMEOVER= False #flag for game over
     
     
-    HUMANISWHITE= True #if the human is white or false if the human is playing black
+    HUMANISWHITE= False #if the human is white or false if the human is playing black
     AIISWHITE= False #if the AI is white or false if the AI is playing black
     
     
@@ -38,7 +38,7 @@ def main():
     
     while RUNNING:
         
-        HUMANTURN= (GAMESTATE.WHITETOMOVE and HUMANISWHITE) or (not GAMESTATE.WHITETOMOVE and not HUMANISWHITE) #if its the human turn or not
+        HUMANTURN= (GAMESTATE.WHITETOMOVE and HUMANISWHITE) or (not GAMESTATE.WHITETOMOVE and AIISWHITE) #if its the human turn or not
         
         
         
@@ -96,7 +96,9 @@ def main():
                     
         #ai logic
         if not HUMANTURN and not GAMEOVER:
-            AIMOVE= ChessAI.FINDRANDOMMOVE(VALIDMOVES) #find a random move from the list of valid moves
+            AIMOVE= ChessAI.FINDGREEDYMOVE(GAMESTATE,VALIDMOVES)
+            if AIMOVE == None:
+                AIMOVE = ChessAI.FINDRANDOMMOVE(VALIDMOVES)
             GAMESTATE.MAKEMOVE(AIMOVE)
             MOVEMADE=True
             ANIMATE=True
