@@ -96,7 +96,7 @@ def main():
                     
         #ai logic
         if not HUMANTURN and not GAMEOVER:
-            AIMOVE= ChessAI.FINDGREEDYMOVE(GAMESTATE,VALIDMOVES)
+            AIMOVE= ChessAI.FINDBESTMOVEMINMAX(GAMESTATE,VALIDMOVES)
             if AIMOVE == None:
                 AIMOVE = ChessAI.FINDRANDOMMOVE(VALIDMOVES)
             GAMESTATE.MAKEMOVE(AIMOVE)
