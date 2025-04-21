@@ -52,21 +52,25 @@ def FINDGREEDYMOVE(GAMESTATE,VALIDMOVES): #find the best move using greedy algor
     return BESTPMOVE
   
  
-def FINDBESTMOVEMINMAX(GAMESTATE,VALIDMOVES):
-    global NEXTMOVE
+def FINDBESTMOVE(GAMESTATE,VALIDMOVES):
+    global NEXTMOVE,COUNTER
+    COUNTER = 0
     NEXTMOVE= None #set next move to none
-    FINDMINMAXMOVE(GAMESTATE,VALIDMOVES,MAXDEPTH,GAMESTATE.WHITETOMOVE) #find the best move using minmax algorithm
-    
+    random.shuffle(VALIDMOVES) #shuffle the moves to avoid bias in the AI
+    #FINDMINMAXMOVE(GAMESTATE,VALIDMOVES,MAXDEPTH,GAMESTATE.WHITETOMOVE) #find the best move using minmax algorithm
+    FINDNEGA_ALPHA_BETAMOVE(GAMESTATE,VALIDMOVES,MAXDEPTH,-CHECKMATESCORE,CHECKMATESCORE,1 if GAMESTATE.WHITETOMOVE else -1) #find the best move using negamax algorithm
+    print("COUNTER: ",COUNTER)
     return NEXTMOVE
  
   
   
 def FINDMINMAXMOVE(GAMESTATE,VALIDMOVES,DEPTH,WHITETOMOVE):
-    global NEXTMOVE
+    global NEXTMOVE,COUNTER
+    COUNTER += 1
     if DEPTH==0:
         return MATERIALSCORE(GAMESTATE.BOARD)
     
-    
+    random.shuffle(VALIDMOVES) #shuffle the moves to avoid bias in the AI
     if WHITETOMOVE:
         MAXSCORE= -CHECKMATESCORE
         for PMOVE in VALIDMOVES:
@@ -94,6 +98,57 @@ def FINDMINMAXMOVE(GAMESTATE,VALIDMOVES,DEPTH,WHITETOMOVE):
             GAMESTATE.UNDOMOVE()
         return MINSCORE #return the min score of the move made by the opponent
         
+    
+    
+    
+    
+def FINDNEGAMOVE(GAMESTATE,VALIDMOVES,DEPTH,TURNMULTI): #find the best move using negamax algorithm
+    global NEXTMOVE
+    if DEPTH==0:
+        return TURNMULTI *BOARDSCORE(GAMESTATE) #return the score of the board based on the material value of the pieces on the board
+    random.shuffle(VALIDMOVES) #shuffle the moves to avoid bias in the AI
+    MAXSCORE= -CHECKMATESCORE
+    for PMOVE in VALIDMOVES:
+        GAMESTATE.MAKEMOVE(PMOVE)
+        NEXTMOVES= GAMESTATE.GETVALIDMOVES()
+        SCORE = -FINDNEGAMOVE(GAMESTATE,NEXTMOVES,DEPTH-1,-TURNMULTI) 
+        if SCORE>  MAXSCORE:
+            MAXSCORE = SCORE
+            if DEPTH == MAXDEPTH:
+                NEXTMOVE = PMOVE
+        
+        GAMESTATE.UNDOMOVE()
+    return MAXSCORE #return the max score of the move made by the player
+    
+    
+ 
+def FINDNEGA_ALPHA_BETAMOVE(GAMESTATE,VALIDMOVES,DEPTH,ALPHA,BETA,TURNMULTI): #find the best move using negamax algorithm
+    global NEXTMOVE, COUNTER
+    COUNTER += 1
+    if DEPTH==0:
+        return TURNMULTI *BOARDSCORE(GAMESTATE) #return the score of the board based on the material value of the pieces on the board
+    
+        
+    
+    
+    MAXSCORE= -CHECKMATESCORE
+    for PMOVE in VALIDMOVES:
+        GAMESTATE.MAKEMOVE(PMOVE)
+        NEXTMOVES= GAMESTATE.GETVALIDMOVES()
+        SCORE = -FINDNEGA_ALPHA_BETAMOVE(GAMESTATE,NEXTMOVES,DEPTH-1,-BETA,-ALPHA,-TURNMULTI) 
+        if SCORE>  MAXSCORE:
+            MAXSCORE = SCORE
+            if DEPTH == MAXDEPTH:
+                NEXTMOVE = PMOVE
+        GAMESTATE.UNDOMOVE()
+        if MAXSCORE >=ALPHA:
+            ALPHA = MAXSCORE
+        if ALPHA >= BETA:
+            break
+        
+    return MAXSCORE #return the max score of the move made by the player
+ 
+    
     
 
 def BOARDSCORE(GAMESTATE): #positive score for white and negative score for black

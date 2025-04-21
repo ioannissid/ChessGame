@@ -29,7 +29,7 @@ def main():
     GAMEOVER= False #flag for game over
     
     
-    HUMANISWHITE= False #if the human is white or false if the human is playing black
+    HUMANISWHITE= True #if the human is white or false if the human is playing black
     AIISWHITE= False #if the AI is white or false if the AI is playing black
     
     
@@ -93,10 +93,10 @@ def main():
                 if I.key== G.K_ESCAPE:
                     RUNNING=False
                     
-                    
+
         #ai logic
         if not HUMANTURN and not GAMEOVER:
-            AIMOVE= ChessAI.FINDBESTMOVEMINMAX(GAMESTATE,VALIDMOVES)
+            AIMOVE= ChessAI.FINDBESTMOVE(GAMESTATE,VALIDMOVES)
             if AIMOVE == None:
                 AIMOVE = ChessAI.FINDRANDOMMOVE(VALIDMOVES)
             GAMESTATE.MAKEMOVE(AIMOVE)
