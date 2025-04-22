@@ -4,7 +4,7 @@ import random
 PIECESCORE={'p': 1, 'R': 5, 'N': 3, 'B': 3, 'Q': 9, 'K': 0} #piece values
 CHECKMATESCORE=1000 #score for checkmate
 STALEMATESCORE=0 #score for stalemate
-MAXDEPTH = 3
+MAXDEPTH = 2
 
 
 

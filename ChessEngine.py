@@ -529,11 +529,11 @@ class MOVE:
             return self.MOVEID == other.MOVEID
         return False
 
-    def getChessNotation(self):
+    def GETCHESSNOTATION(self):
         if self.ISPAWNPROMOTION:
             return self.GETRANKFILE(self.ENDROW, self.ENDCOL) + "Q"
         if self.ISCASTLE:
-            if self.ENDCOL == 1:
+            if self.ENDCOL == 2:
                 return "0-0-0" #long castle
             else:
                 return "0-0" #short castle
