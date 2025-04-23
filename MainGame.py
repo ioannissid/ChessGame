@@ -95,18 +95,22 @@ def main():
                         MOVEFINDER.terminate()
                         AIWORKING=False
                     MOVEUNDONE=True
-                if I.key== G.K_r: #reset with r
-                    GAMESTATE=ChessEngine.GAMESTATE()
+                if I.key == G.K_r:  # reset with r
+                    GAMESTATE = ChessEngine.GAMESTATE()
                     VALIDMOVES = GAMESTATE.GETVALIDMOVES()
                     SQSELECTED = ()
                     PLAYERCLICKS = []
                     MOVEMADE = False
-                    ANIMATE=False
-                    GAMEOVER=False
-                    if AIWORKING:                        
+                    ANIMATE = False
+                    GAMEOVER = False
+                    if MOVEFINDER is not None:
                         MOVEFINDER.terminate()
-                        AIWORKING=False
-                    MOVEUNDONE=True
+                    MOVEFINDER = None
+                    AIWORKING = False
+                    MOVEUNDONE = False
+                    # Force recalculation of HUMANTURN after reset
+                    HUMANTURN = (GAMESTATE.WHITETOMOVE and HUMANISWHITE) or (not GAMESTATE.WHITETOMOVE and HUMANISBLACK)
+                    continue
                 if I.key== G.K_ESCAPE:
                     RUNNING=False
                     
