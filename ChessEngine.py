@@ -31,6 +31,10 @@ class GAMESTATE:
         self.CURRENTCASTLERIGHTS = CASTLERIGHTS(True, True, True, True) #checks if the pieces moved
         self.CASTLERIGHTSLOG = [CASTLERIGHTS(self.CURRENTCASTLERIGHTS.WKS, self.CURRENTCASTLERIGHTS.BKS,
                                                self.CURRENTCASTLERIGHTS.WQS, self.CURRENTCASTLERIGHTS.BQS)]
+        self.CASTLEDWHITE = False
+        self.CASTLEDBLACK = False
+        self.MOVECOUNT = 0
+        self.LASTMOVE = None
 
     def MAKEMOVE(self, MOVE):
 
@@ -59,12 +63,18 @@ class GAMESTATE:
                 self.BOARD[MOVE.ENDROW][MOVE.ENDCOL + 1] = self.BOARD[MOVE.ENDROW][
                     MOVE.ENDCOL - 2]  #rook goes to new square
                 self.BOARD[MOVE.ENDROW][MOVE.ENDCOL - 2] = '--'  #erase old rook
+            if self.WHITETOMOVE:
+                self.CASTLEDWHITE = True
+            else:
+                self.CASTLEDBLACK = True
 
         self.ENPASSANTPOSSIBLELOG.append(self.ENPASSANTPOSSIBLE)
         #updating castle rights 
         self.UPDATECASTLERIGHTS(MOVE)
         self.CASTLERIGHTSLOG.append(CASTLERIGHTS(self.CURRENTCASTLERIGHTS.WKS, self.CURRENTCASTLERIGHTS.BKS,
                                                    self.CURRENTCASTLERIGHTS.WQS, self.CURRENTCASTLERIGHTS.BQS))
+        self.MOVECOUNT += 1
+        self.LASTMOVE = MOVE
 
     def UNDOMOVE(self):
         if len(self.MOVELOG) != 0:  #make sure that there is a MOVE to undo
