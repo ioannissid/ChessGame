@@ -2,6 +2,7 @@
 import pygame as G #shortcut for game cause writing pygame over and over became tedious
 import ChessEngine
 import ChessAI
+from multiprocessing import Process, Queue
 BOARD_WIDTH = BOARD_HEIGHT = 640 #pieces are 60x60
 MOVELOGWIDTH = 320
 MOVELOGHEIGHT = BOARD_HEIGHT
@@ -29,10 +30,15 @@ def main():
     SQSELECTED = ()  # keeps tract  of the user's last click wit h no square initially
     PLAYERCLICKS = [] #keeps track of player clicks (2 clicks)
     GAMEOVER= False #flag for game over
-    MOVELOGFONT = G.font.SysFont("Times New Roman", 16, False, False) 
+    MOVELOGFONT = G.font.SysFont("Times New Roman", 16, True, False) 
+    AIWORKING = False #flag for ai working
+    MOVEFINDER = None 
+    MOVEUNDONE = False #flag for move undone
+    
+    
     # both true = 2 humans , both false = 2 ai, one true and one false = human vs ai
     HUMANISWHITE= True #true = human is white false = ai is white
-    HUMANISBLACK= True #true = human is black false = ai is black
+    HUMANISBLACK= False #true = human is black false = ai is black
     
     
     
@@ -49,7 +55,7 @@ def main():
             if I.type == G.QUIT:
                 RUNNING = False
             elif I.type == G.MOUSEBUTTONDOWN: # <------- START OF MOUSE HANDLING
-                if not GAMEOVER and HUMANTURN:
+                if not GAMEOVER:
                     LOCATION = G.mouse.get_pos() 
                     COL = LOCATION[0] // SQ_SIZE
                     ROW = LOCATION[1] // SQ_SIZE
@@ -59,7 +65,7 @@ def main():
                     else:
                         SQSELECTED = (ROW, COL)
                         PLAYERCLICKS.append(SQSELECTED)  # append for both 1st and 2nd click
-                    if len(PLAYERCLICKS) == 2:
+                    if len(PLAYERCLICKS) == 2 and HUMANTURN:
                         MOVE = ChessEngine.MOVE(PLAYERCLICKS[0], PLAYERCLICKS[1], GAMESTATE.BOARD)
                         for i in range(len(VALIDMOVES)):
                             if MOVE == VALIDMOVES[i]:
@@ -84,6 +90,11 @@ def main():
                     ANIMATE=False
                     MOVEMADE=True
                     GAMEOVER=False
+                    if AIWORKING:
+                        
+                        MOVEFINDER.terminate()
+                        AIWORKING=False
+                    MOVEUNDONE=True
                 if I.key== G.K_r: #reset with r
                     GAMESTATE=ChessEngine.GAMESTATE()
                     VALIDMOVES = GAMESTATE.GETVALIDMOVES()
@@ -92,18 +103,32 @@ def main():
                     MOVEMADE = False
                     ANIMATE=False
                     GAMEOVER=False
+                    if AIWORKING:                        
+                        MOVEFINDER.terminate()
+                        AIWORKING=False
+                    MOVEUNDONE=True
                 if I.key== G.K_ESCAPE:
                     RUNNING=False
                     
 
         #ai logic
-        if not HUMANTURN and not GAMEOVER:
-            AIMOVE= ChessAI.FINDBESTMOVE(GAMESTATE,VALIDMOVES)
-            if AIMOVE == None:
-                AIMOVE = ChessAI.FINDRANDOMMOVE(VALIDMOVES)
-            GAMESTATE.MAKEMOVE(AIMOVE)
-            MOVEMADE=True
-            ANIMATE=True
+        if not HUMANTURN and not GAMEOVER and not MOVEUNDONE:
+            if not AIWORKING:
+                AIWORKING=True
+                print("AI is thinking...")
+                RQUEUE=Queue() #pass data between threads cause the dont share normally
+                MOVEFINDER = Process(target=ChessAI.FINDBESTMOVE, args=(GAMESTATE,VALIDMOVES,RQUEUE))
+                MOVEFINDER.start() #calls ai with the gamestate and valid moves
+
+            if not MOVEFINDER.is_alive(): #if the ai is done thinking        
+                print ("AI is done thinking")
+                AIMOVE = RQUEUE.get() #get the move from the ai
+                if AIMOVE == None:
+                    AIMOVE = ChessAI.FINDRANDOMMOVE(VALIDMOVES)
+                GAMESTATE.MAKEMOVE(AIMOVE)
+                MOVEMADE=True
+                ANIMATE=True
+                AIWORKING=False
         
         
         
@@ -117,7 +142,7 @@ def main():
             VALIDMOVES = GAMESTATE.GETVALIDMOVES()
             MOVEMADE = False
             ANIMATE= False    
-            
+            MOVEUNDONE=False
             
         DrawGameState(SCREEN,GAMESTATE,VALIDMOVES,SQSELECTED,MOVELOGFONT) 
         
@@ -176,30 +201,56 @@ def DrawPieces(SCREEN,BOARD):
                 SCREEN.blit(IMAGES[PIECE], G.Rect(j * SQ_SIZE, i * SQ_SIZE, SQ_SIZE, SQ_SIZE))
             
                
-def DRAWMOVELOG(SCREEN,GAMESTATE,MOVELOGFONT): #draws the move logs 
-    MOVELOGREC= G.Rect(BOARD_WIDTH, 0 , MOVELOGWIDTH, MOVELOGHEIGHT) #move log rectangle
-    COLORS=(150, 115, 72)
+def DRAWMOVELOG(SCREEN, GAMESTATE, MOVELOGFONT):
+    MOVELOGREC = G.Rect(BOARD_WIDTH, 0, MOVELOGWIDTH, MOVELOGHEIGHT)
+    COLORS = (150, 115, 72)  # Brown background
     G.draw.rect(SCREEN, COLORS, MOVELOGREC)
-    MOVELOG= GAMESTATE.MOVELOG #move log from the game state
-    MOVETEXT= []
-    for i in range (0,len(MOVELOG),2): #for every 2 moves
-        MOVESTRING= str(i//2 + 1) + "." + str(MOVELOG[i]) + " " #move number and the move made
-        if i+1 < len(MOVELOG): #if there is a black move
-            MOVESTRING += str(MOVELOG[i+1]) + "  "
-        MOVETEXT.append(MOVESTRING) #append the move string to the list
-    MOVESPERROW= 3 #number of moves per row
-    PADDING= 10 #padding for the text
-    TEXTY= PADDING
-    LINESPACE= 3 #line space for the text
-    for i in range(0,len(MOVETEXT),MOVESPERROW):
+    MOVELOG = GAMESTATE.MOVELOG
+    MOVETEXT = []
+    
+    for i in range(0, len(MOVELOG), 2):
+        # Move number and white's move in white
+        MOVESTRING = str(i//2 + 1) + "." 
+        WHITEMOVE = str(MOVELOG[i]) + " "
+        
+        # If black moved, add their move in black
+        BLACKMOVE = ""
+        if i+1 < len(MOVELOG):
+            BLACKMOVE = str(MOVELOG[i+1]) 
+            
+        MOVETEXT.append((MOVESTRING, WHITEMOVE, BLACKMOVE))
+    
+    MOVESPERROW = 3
+    PADDING = 5
+    TEXTY = PADDING
+    LINESPACE = 2
+    
+    for i in range(0, len(MOVETEXT), MOVESPERROW):
         TEXT = ""
         for j in range(MOVESPERROW):
-            if i+j < len(MOVETEXT): #if there is a move to be displayed
-                TEXT += MOVETEXT[i+j] 
-        TEXTOBJ= MOVELOGFONT.render(TEXT, 1, 'white') #font color white
-        TEXTLOC = MOVELOGREC.move(PADDING,TEXTY)
-        SCREEN.blit(TEXTOBJ, TEXTLOC) #draw the text on the screen
-        TEXTY += TEXTOBJ.get_height() + LINESPACE #move the text down for the next line
+            if i+j < len(MOVETEXT):
+                # Split each move into components
+                MOVENUM, WMOVE, BMOVE = MOVETEXT[i+j]
+                
+                # Render move number in gold
+                NUMOBJ = MOVELOGFONT.render(MOVENUM, True, G.Color('gray'))
+                TEXTLOC = MOVELOGREC.move(PADDING + len(TEXT)*8, TEXTY)
+                SCREEN.blit(NUMOBJ, TEXTLOC)
+                
+                # Render white's move in white
+                WHITEOBJ = MOVELOGFONT.render(WMOVE, True, G.Color('white'))
+                TEXTLOC = TEXTLOC.move(NUMOBJ.get_width(), 0)
+                SCREEN.blit(WHITEOBJ, TEXTLOC)
+                
+                # Render black's move in dark gray (pure black might be hard to read)
+                if BMOVE:
+                    BLACKOBJ = MOVELOGFONT.render(BMOVE, True, (50, 50, 50))
+                    TEXTLOC = TEXTLOC.move(WHITEOBJ.get_width(), 0)
+                    SCREEN.blit(BLACKOBJ, TEXTLOC)
+                
+                TEXT += MOVENUM + WMOVE + BMOVE
+                
+        TEXTY += MOVELOGFONT.get_height() + LINESPACE
        
                
                

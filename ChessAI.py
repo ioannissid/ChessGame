@@ -2,9 +2,116 @@ import random
 
 
 PIECESCORE={'p': 1, 'R': 5, 'N': 3, 'B': 3, 'Q': 9, 'K': 0} #piece values
+
+WKNIGHTSCORES = [[0.0, 0.1, 0.2, 0.2, 0.2, 0.2, 0.1, 0.0],
+                 [0.1, 0.3, 0.5, 0.5, 0.5, 0.5, 0.3, 0.1],
+                 [0.2, 0.5, 0.6, 0.65, 0.65, 0.6, 0.5, 0.2],
+                 [0.2, 0.55, 0.65, 0.7, 0.7, 0.65, 0.55, 0.2],
+                 [0.2, 0.5, 0.65, 0.7, 0.7, 0.65, 0.5, 0.2],
+                 [0.2, 0.55, 0.6, 0.65, 0.65, 0.6, 0.55, 0.2],
+                 [0.1, 0.3, 0.5, 0.55, 0.55, 0.5, 0.3, 0.1],
+                 [0.0, 0.1, 0.2, 0.2, 0.2, 0.2, 0.1, 0.0]]
+
+BKNIGHTSCORES = [[0.0, 0.1, 0.2, 0.2, 0.2, 0.2, 0.1, 0.0],
+                [0.1, 0.3, 0.5, 0.55, 0.55, 0.5, 0.3, 0.1],
+                [0.2, 0.55, 0.6, 0.65, 0.65, 0.6, 0.55, 0.2],
+                [0.2, 0.5, 0.65, 0.7, 0.7, 0.65, 0.5, 0.2],
+                [0.2, 0.55, 0.65, 0.7, 0.7, 0.65, 0.55, 0.2],
+                [0.2, 0.5, 0.6, 0.65, 0.65, 0.6, 0.5, 0.2],
+                [0.1, 0.3, 0.5, 0.5, 0.5, 0.5, 0.3, 0.1],
+                [0.0, 0.1, 0.2, 0.2, 0.2, 0.2, 0.1, 0.0]]
+
+WBISHOPSCORES = [[0.0, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.0],
+                 [0.2, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.2],
+                 [0.2, 0.4, 0.5, 0.6, 0.6, 0.5, 0.4, 0.2],
+                 [0.2, 0.5, 0.5, 0.6, 0.6, 0.5, 0.5, 0.2],
+                 [0.2, 0.4, 0.6, 0.6, 0.6, 0.6, 0.4, 0.2],
+                 [0.2, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.2],
+                 [0.2, 0.5, 0.4, 0.4, 0.4, 0.4, 0.5, 0.2],
+                 [0.0, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.0]]
+
+BBISHOPSCORES = [[0.0, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.0],  
+                 [0.2, 0.5, 0.4, 0.4, 0.4, 0.4, 0.5, 0.2],
+                 [0.2, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.2],
+                 [0.2, 0.4, 0.6, 0.6, 0.6, 0.6, 0.4, 0.2],
+                 [0.2, 0.5, 0.5, 0.6, 0.6, 0.5, 0.5, 0.2],
+                 [0.2, 0.4, 0.5, 0.6, 0.6, 0.5, 0.4, 0.2],
+                 [0.2, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.2],
+                 [0.0, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.0]]
+
+WROOKSCORES = [[0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25],
+               [0.5, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.5],
+               [0.0, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.0],
+               [0.0, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.0],
+               [0.0, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.0],
+               [0.0, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.0],
+               [0.0, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.0],
+               [0.25, 0.25, 0.25, 0.5, 0.5, 0.25, 0.25, 0.25]]
+
+BROOKSCORES = [[0.25, 0.25, 0.25, 0.5, 0.5, 0.25, 0.25, 0.25],
+               [0.0, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.0],
+               [0.0, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.0],
+               [0.0, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.0],
+               [0.0, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.0],
+               [0.0, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.0],
+               [0.5, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.5],
+               [0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25]]
+
+
+
+WQUEENSCORES = [[0.0, 0.2, 0.2, 0.3, 0.3, 0.2, 0.2, 0.0],
+                [0.2, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.2],
+                [0.2, 0.4, 0.5, 0.5, 0.5, 0.5, 0.4, 0.2],
+                [0.3, 0.4, 0.5, 0.5, 0.5, 0.5, 0.4, 0.3],
+                [0.3, 0.4, 0.5, 0.5, 0.5, 0.5, 0.4, 0.3],
+                [0.2, 0.4, 0.5, 0.5, 0.5, 0.5, 0.4, 0.2],
+                [0.2, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.2],
+                [0.0, 0.2, 0.2, 0.3, 0.3, 0.2, 0.2, 0.0]]
+
+BQUEENSCORES = [[0.0, 0.2, 0.2, 0.3, 0.3, 0.2, 0.2, 0.0],
+                [0.2, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.2],
+                [0.2, 0.4, 0.5, 0.5, 0.5, 0.5, 0.4, 0.2],
+                [0.3, 0.4, 0.5, 0.5, 0.5, 0.5, 0.4, 0.3],
+                [0.4, 0.4, 0.5, 0.5, 0.5, 0.5, 0.4, 0.3],
+                [0.2, 0.5, 0.5, 0.5, 0.5, 0.5, 0.4, 0.2],
+                [0.2, 0.4, 0.5, 0.4, 0.4, 0.4, 0.4, 0.2],
+                [0.0, 0.2, 0.2, 0.3, 0.3, 0.2, 0.2, 0.0]]
+
+WPAWNSCORES = [[0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8],
+               [0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7],
+               [0.3, 0.3, 0.4, 0.5, 0.5, 0.4, 0.3, 0.3],
+               [0.25, 0.25, 0.3, 0.45, 0.45, 0.3, 0.25, 0.25],
+               [0.2, 0.2, 0.2, 0.4, 0.4, 0.2, 0.2, 0.2],
+               [0.25, 0.15, 0.1, 0.2, 0.2, 0.1, 0.15, 0.25],
+               [0.25, 0.3, 0.3, 0.0, 0.0, 0.3, 0.3, 0.25],
+               [0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2]]
+
+BPAWNSCORES = [[0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8],
+               [0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7],
+               [0.3, 0.3, 0.4, 0.5, 0.5, 0.4, 0.3, 0.3],
+               [0.25, 0.25, 0.3, 0.45, 0.45, 0.3, 0.25, 0.25],
+               [0.2, 0.2, 0.2, 0.4, 0.4, 0.2, 0.2, 0.2],
+               [0.25, 0.15, 0.1, 0.2, 0.2, 0.1, 0.15, 0.25],
+               [0.25, 0.3, 0.3, 0.0, 0.0, 0.3, 0.3, 0.25],
+               [0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2]]
+
+
+PIECEPOSITIONVALUES = {
+    "wN": WKNIGHTSCORES,
+    "bN": BKNIGHTSCORES,
+    "wB": WBISHOPSCORES,
+    "bB": BBISHOPSCORES,
+    "wR": WROOKSCORES,
+    "bR": BROOKSCORES,
+    "wQ": WQUEENSCORES,
+    "bQ": BQUEENSCORES,
+    "wp": WPAWNSCORES,
+    "bp": BPAWNSCORES,}
+
+
 CHECKMATESCORE=1000 #score for checkmate
 STALEMATESCORE=0 #score for stalemate
-MAXDEPTH = 2
+MAXDEPTH = 4
 
 
 
@@ -52,7 +159,7 @@ def FINDGREEDYMOVE(GAMESTATE,VALIDMOVES): #find the best move using greedy algor
     return BESTPMOVE
   
  
-def FINDBESTMOVE(GAMESTATE,VALIDMOVES):
+def FINDBESTMOVE(GAMESTATE,VALIDMOVES,RQUEUE):
     global NEXTMOVE,COUNTER
     COUNTER = 0
     NEXTMOVE= None #set next move to none
@@ -60,7 +167,7 @@ def FINDBESTMOVE(GAMESTATE,VALIDMOVES):
     #FINDMINMAXMOVE(GAMESTATE,VALIDMOVES,MAXDEPTH,GAMESTATE.WHITETOMOVE) #find the best move using minmax algorithm
     FINDNEGA_ALPHA_BETAMOVE(GAMESTATE,VALIDMOVES,MAXDEPTH,-CHECKMATESCORE,CHECKMATESCORE,1 if GAMESTATE.WHITETOMOVE else -1) #find the best move using negamax algorithm
     print("COUNTER: ",COUNTER)
-    return NEXTMOVE
+    RQUEUE.put(NEXTMOVE) #put the next move in the queue
  
   
   
@@ -125,6 +232,10 @@ def FINDNEGAMOVE(GAMESTATE,VALIDMOVES,DEPTH,TURNMULTI): #find the best move usin
 def FINDNEGA_ALPHA_BETAMOVE(GAMESTATE,VALIDMOVES,DEPTH,ALPHA,BETA,TURNMULTI): #find the best move using negamax algorithm
     global NEXTMOVE, COUNTER
     COUNTER += 1
+    if GAMESTATE.CHECKMATE:
+        return -CHECKMATESCORE * TURNMULTI
+    if GAMESTATE.STALEMATE:
+        return STALEMATESCORE
     if DEPTH==0:
         return TURNMULTI *BOARDSCORE(GAMESTATE) #return the score of the board based on the material value of the pieces on the board
     
@@ -136,13 +247,13 @@ def FINDNEGA_ALPHA_BETAMOVE(GAMESTATE,VALIDMOVES,DEPTH,ALPHA,BETA,TURNMULTI): #f
         GAMESTATE.MAKEMOVE(PMOVE)
         NEXTMOVES= GAMESTATE.GETVALIDMOVES()
         SCORE = -FINDNEGA_ALPHA_BETAMOVE(GAMESTATE,NEXTMOVES,DEPTH-1,-BETA,-ALPHA,-TURNMULTI) 
+        GAMESTATE.UNDOMOVE()
         if SCORE>  MAXSCORE:
             MAXSCORE = SCORE
             if DEPTH == MAXDEPTH:
                 NEXTMOVE = PMOVE
-        GAMESTATE.UNDOMOVE()
-        if MAXSCORE >=ALPHA:
-            ALPHA = MAXSCORE
+                print(PMOVE,SCORE)
+        ALPHA= max(ALPHA,SCORE) #update the alpha value
         if ALPHA >= BETA:
             break
         
@@ -161,12 +272,17 @@ def BOARDSCORE(GAMESTATE): #positive score for white and negative score for blac
         return STALEMATESCORE
     
     SCORE=0
-    for ROW in GAMESTATE.BOARD:
-        for SQUARE in ROW:
-            if SQUARE[0] == 'w':
-                SCORE += PIECESCORE[SQUARE[1]]
-            elif SQUARE[0] == 'b':
-                SCORE -= PIECESCORE[SQUARE[1]]
+    for ROW in range(len(GAMESTATE.BOARD)):
+        for COL in range(len(GAMESTATE.BOARD[ROW])):
+            SQUARE= GAMESTATE.BOARD[ROW][COL]
+            if SQUARE!= "--":
+                PIECEPOSITION=0
+                if SQUARE[1] != 'K':
+                    PIECEPOSITION = PIECEPOSITIONVALUES[SQUARE][ROW][COL] * 5
+                if SQUARE[0] == 'w': 
+                    SCORE += PIECESCORE[SQUARE[1]] + PIECEPOSITION  #add the score of the piece and its position value
+                elif SQUARE[0] == 'b':
+                    SCORE -= PIECESCORE[SQUARE[1]] + PIECEPOSITION  #subtract the score of the piece and its position value
     
     return SCORE #return the score of the board based on the material value of the pieces on the board    
 
