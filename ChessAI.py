@@ -4,14 +4,14 @@ import MaterialScore
 CHECKMATESCORE = 1000000  # Increased to ensure it's prioritized
 STALEMATESCORE = 0
 MAXDEPTH = 4 # Reduced depth for faster computation
-OPENING_RANDOMIZATION = 0.2  # 20% random variation in opening phase
+OPENING_RANDOMIZATION = 0.1  # 10% random variation in opening phase
 
 
 def FINDRANDOMMOVE(VALIDMOVES):
     return VALIDMOVES[random.randint(0,len(VALIDMOVES)-1)] #randomly select a move from the list of valid moves -1 to avoid index out of range error
  
-def ORDERMOVES(GAMESTATE, MOVES):
-    """Orders moves to improve alpha-beta pruning efficiency"""
+def ORDERMOVES(GAMESTATE, MOVES):#Orders moves to improve alpha-beta pruning efficiency
+    
     MOVEVALUES = []
     for MOVE in MOVES:
         MOVEVALUE = 0
@@ -28,15 +28,15 @@ def ORDERMOVES(GAMESTATE, MOVES):
         if MOVE.ISPAWNPROMOTION:
             MOVEVALUE += MaterialScore.PIECESCORE['Q'] * 90
             
-        # Add slight randomization to positional scores in opening
-        if MOVE.PIECEMOV in MaterialScore.PIECEPOSITIONVALUES:
+        
+        if MOVE.PIECEMOV in MaterialScore.PIECEPOSITIONVALUES:# Add slight randomization to positional scores in opening
             position_value = MaterialScore.PIECEPOSITIONVALUES[MOVE.PIECEMOV][MOVE.ENDROW][MOVE.ENDCOL]
             if GAMESTATE.MOVECOUNT < 10:
                 position_value += random.randint(-2, 2)  # Small random variation in opening
             MOVEVALUE += position_value * 5
             
-        # Penalize repeated moves
-        if hasattr(GAMESTATE, 'LASTMOVE') and GAMESTATE.LASTMOVE and MOVE.PIECEMOV == GAMESTATE.LASTMOVE.PIECEMOV:
+        
+        if hasattr(GAMESTATE, 'LASTMOVE') and GAMESTATE.LASTMOVE and MOVE.PIECEMOV == GAMESTATE.LASTMOVE.PIECEMOV:# Penalize repeated moves
             MOVEVALUE -= 100
             
         MOVEVALUES.append((MOVE, MOVEVALUE))
@@ -48,14 +48,14 @@ def FINDBESTMOVE(GAMESTATE, VALIDMOVES, RQUEUE):
     global NEXTMOVE
     NEXTMOVE = None
     
-    # Add randomization in opening phase (first 10 moves)
-    if GAMESTATE.MOVECOUNT < 10 and random.random() < OPENING_RANDOMIZATION:
+    
+    if GAMESTATE.MOVECOUNT < 10 and random.random() < OPENING_RANDOMIZATION:# Add randomization in opening phase (first 10 moves)
         NEXTMOVE = FINDRANDOMMOVE(VALIDMOVES)
         RQUEUE.put(NEXTMOVE)
         return
     
-    # First check for immediate checkmates
-    for MOVE in VALIDMOVES:
+    
+    for MOVE in VALIDMOVES:# First check for immediate checkmates
         GAMESTATE.MAKEMOVE(MOVE)
         if GAMESTATE.CHECKMATE:
             NEXTMOVE = MOVE
@@ -64,8 +64,8 @@ def FINDBESTMOVE(GAMESTATE, VALIDMOVES, RQUEUE):
             return
         GAMESTATE.UNDOMOVE()
     
-    # If no immediate checkmate, do regular search with ordered moves
-    ORDEREDMOVES = ORDERMOVES(GAMESTATE, VALIDMOVES)
+    
+    ORDEREDMOVES = ORDERMOVES(GAMESTATE, VALIDMOVES)# If no immediate checkmate, do regular search with ordered moves
     FINDNEGA_ALPHA_BETAMOVE(GAMESTATE, ORDEREDMOVES, MAXDEPTH, -CHECKMATESCORE, CHECKMATESCORE, 
                            1 if GAMESTATE.WHITETOMOVE else -1)
     RQUEUE.put(NEXTMOVE)
@@ -109,25 +109,25 @@ def BOARDSCORE(GAMESTATE):
     
     SCORE = 0
     
-    # Safely check for castling attributes
-    CASTLEDWHITE = getattr(GAMESTATE, 'CASTLEDWHITE', False)
+    
+    CASTLEDWHITE = getattr(GAMESTATE, 'CASTLEDWHITE', False)# Safely check for castling attributes
     CASTLEDBLACK = getattr(GAMESTATE, 'CASTLEDBLACK', False)
     MOVECOUNT = getattr(GAMESTATE, 'MOVECOUNT', 0)
     
-    # Add strong castling evaluation with safe attribute access
-    if GAMESTATE.WHITETOMOVE:
-        # Penalize not castling in mid-game
-        if not CASTLEDWHITE and MOVECOUNT > 10:
+    
+    if GAMESTATE.WHITETOMOVE:# Add strong castling evaluation with safe attribute access
+        
+        if not CASTLEDWHITE and MOVECOUNT > 10:# Penalize not castling in mid-game
             SCORE -= 500
-        # Bonus for keeping castling rights early game
-        if MOVECOUNT < 10 and hasattr(GAMESTATE, 'CURRENTCASTLERIGHTS'):
+        
+        if MOVECOUNT < 10 and hasattr(GAMESTATE, 'CURRENTCASTLERIGHTS'):# Bonus for keeping castling rights early game
             if GAMESTATE.CURRENTCASTLERIGHTS.WKS:
                 SCORE += 150
             if GAMESTATE.CURRENTCASTLERIGHTS.WQS:
                 SCORE += 150
     else:
-        # Same for black
-        if not CASTLEDBLACK and MOVECOUNT > 10:
+        
+        if not CASTLEDBLACK and MOVECOUNT > 10:# Same for black
             SCORE += 500
         if MOVECOUNT < 10 and hasattr(GAMESTATE, 'CURRENTCASTLERIGHTS'):
             if GAMESTATE.CURRENTCASTLERIGHTS.BKS:

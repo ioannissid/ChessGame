@@ -421,8 +421,10 @@ class GAMESTATE:
             if self.PINNED[i][0] == ROW and self.PINNED[i][1] == COL:
                 PINNED = True
                 PINDIR = (self.PINNED[i][2], self.PINNED[i][3])
-                self.PINNED.remove(self.PINNED[i])
+                if self.BOARD[ROW][COL][1] != "Q":  # Keep pin info for queens
+                    self.PINNED.remove(self.PINNED[i])
                 break
+            break
 
         DIRECTIONS = ((-1, -1), (-1, 1), (1, 1), (1, -1))  #diagonals: up/left up/right down/right down/left
         ENEMY = "b" if self.WHITETOMOVE else "w"

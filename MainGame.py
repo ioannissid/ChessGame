@@ -8,7 +8,7 @@ MOVELOGWIDTH = 320
 MOVELOGHEIGHT = BOARD_HEIGHT
 DIMENSION = 8 #board dimensions
 SQ_SIZE= BOARD_HEIGHT // DIMENSION #square size so it can be changed if i decide to change the size of the window so it can autochange
-MAX_FPS = 120 # just in case i do animations
+MAX_FPS = 120 #for animations
 IMAGES = {}
 
 def loadImage():
@@ -38,7 +38,7 @@ def main():
     
     # both true = 2 humans , both false = 2 ai, one true and one false = human vs ai
     HUMANISWHITE= True #true = human is white false = ai is white
-    HUMANISBLACK= False #true = human is black false = ai is black
+    HUMANISBLACK= True #true = human is black false = ai is black
     
     
     
@@ -54,7 +54,7 @@ def main():
         for I in G.event.get():
             if I.type == G.QUIT:
                 RUNNING = False
-            elif I.type == G.MOUSEBUTTONDOWN: # <------- START OF MOUSE HANDLING
+            elif I.type == G.MOUSEBUTTONDOWN: #START OF MOUSE HANDLING
                 if not GAMEOVER:
                     LOCATION = G.mouse.get_pos() 
                     COL = LOCATION[0] // SQ_SIZE
@@ -108,8 +108,7 @@ def main():
                     MOVEFINDER = None
                     AIWORKING = False
                     MOVEUNDONE = False
-                    # Force recalculation of HUMANTURN after reset
-                    HUMANTURN = (GAMESTATE.WHITETOMOVE and HUMANISWHITE) or (not GAMESTATE.WHITETOMOVE and HUMANISBLACK)
+                    HUMANTURN = (GAMESTATE.WHITETOMOVE and HUMANISWHITE) or (not GAMESTATE.WHITETOMOVE and HUMANISBLACK) #recalculate the turn because it created a bug when the reset happended
                     continue
                 if I.key== G.K_ESCAPE:
                     RUNNING=False
@@ -119,13 +118,11 @@ def main():
         if not HUMANTURN and not GAMEOVER and not MOVEUNDONE:
             if not AIWORKING:
                 AIWORKING=True
-                print("AI is thinking...")
                 RQUEUE=Queue() #pass data between threads cause the dont share normally
                 MOVEFINDER = Process(target=ChessAI.FINDBESTMOVE, args=(GAMESTATE,VALIDMOVES,RQUEUE))
                 MOVEFINDER.start() #calls ai with the gamestate and valid moves
 
             if not MOVEFINDER.is_alive(): #if the ai is done thinking        
-                print ("AI is done thinking")
                 AIMOVE = RQUEUE.get() #get the move from the ai
                 if AIMOVE == None:
                     AIMOVE = ChessAI.FINDRANDOMMOVE(VALIDMOVES)
@@ -168,7 +165,7 @@ def main():
 #Draw the BOARD and everything else
 def DrawGameState(SCREEN,GAMESTATE,VALIDMOVES,SQSELECTED,MOVELOGFONT): 
     DrawBoard(SCREEN)
-    HIGHLIGHTSQUARES(SCREEN,GAMESTATE,VALIDMOVES,SQSELECTED) #before the piecs so it doesnt cover them
+    HIGHLIGHTSQUARES(SCREEN,GAMESTATE,VALIDMOVES,SQSELECTED) #before the pieces so it doesnt cover them
     DrawPieces(SCREEN,GAMESTATE.BOARD)
     DRAWMOVELOG(SCREEN,GAMESTATE,MOVELOGFONT)
 
@@ -236,7 +233,7 @@ def DRAWMOVELOG(SCREEN, GAMESTATE, MOVELOGFONT):
                 # Split each move into components
                 MOVENUM, WMOVE, BMOVE = MOVETEXT[i+j]
                 
-                # Render move number in gold
+                # Render move number in gray
                 NUMOBJ = MOVELOGFONT.render(MOVENUM, True, G.Color('gray'))
                 TEXTLOC = MOVELOGREC.move(PADDING + len(TEXT)*8, TEXTY)
                 SCREEN.blit(NUMOBJ, TEXTLOC)
@@ -296,22 +293,11 @@ def DRAWENDGAMETEXT(SCREEN, TEXT, GAMESTATE):
             TEXTOBJ = FONT.render(TEXT, 0, G.Color('Black'))
         else:
             TEXTOBJ = FONT.render(TEXT, 0, G.Color('White'))
-    
     # Center the text
-    TEXTLOC = G.Rect(0, 0, BOARD_WIDTH, BOARD_HEIGHT).move(
-        BOARD_WIDTH / 2 - TEXTOBJ.get_width() / 2, 
-        BOARD_HEIGHT / 2 - TEXTOBJ.get_height() / 2
-    )
-    
-    # Draw a gray background rectangle behind the text
-    BG_RECT = G.Rect(
-        TEXTLOC.x - 10, TEXTLOC.y - 10,  # Add padding around the text
-        TEXTOBJ.get_width() + 20, TEXTOBJ.get_height() + 20
-    )
-    G.draw.rect(SCREEN, G.Color('Gray'), BG_RECT)
-    
-    # Draw the text on top of the background
-    SCREEN.blit(TEXTOBJ, TEXTLOC)
+    TEXTLOC = G.Rect(0, 0, BOARD_WIDTH, BOARD_HEIGHT).move(BOARD_WIDTH / 2 - TEXTOBJ.get_width() / 2, BOARD_HEIGHT / 2 - TEXTOBJ.get_height() / 2)
+    BG_RECT = G.Rect(TEXTLOC.x - 10, TEXTLOC.y - 10,TEXTOBJ.get_width() + 20, TEXTOBJ.get_height() + 20)# Draw a background rectangle behind the text     
+    G.draw.rect(SCREEN, G.Color('Gray'), BG_RECT) 
+    SCREEN.blit(TEXTOBJ, TEXTLOC)# Draw the text on top of the background
     
     
 if __name__=="__main__":
