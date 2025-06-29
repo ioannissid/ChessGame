@@ -4,8 +4,7 @@
 class GAMESTATE:
     def __init__(self):
         #2d list of the board
-        #pieces are based on official chess annotation
-        #w=white,b=black,R=Rook,N=Knight(to avoid confusion with king),B=Bishop,Q=Queen,K=King, - = empty space
+        #w=white,b=black,R=Rook,N=Knight(to avoid confusion with king),B=Bishop,Q=Queen,K=King, -- = empty space
         self.BOARD = [
             ["bR", "bN", "bB", "bQ", "bK", "bB", "bN", "bR"],
             ["bp", "bp", "bp", "bp", "bp", "bp", "bp", "bp"],
@@ -109,9 +108,6 @@ class GAMESTATE:
             self.STALEMATE = False
 
     def UPDATECASTLERIGHTS(self, MOVE):
-        """
-        Update the castle rights given the MOVE
-        """
         if MOVE.PIECECAP == "wR":
             if MOVE.ENDCOL == 0:  #left rook
                 self.CURRENTCASTLERIGHTS.WQS = False
@@ -146,7 +142,6 @@ class GAMESTATE:
 
         TEMPCASTLERIGHTS = CASTLERIGHTS(self.CURRENTCASTLERIGHTS.WKS, self.CURRENTCASTLERIGHTS.BKS,
                                           self.CURRENTCASTLERIGHTS.WQS, self.CURRENTCASTLERIGHTS.BQS)
-        # advanced algorithm
         MOVES = []
         self.INCHECK, self.PINNED, self.CHECKS = self.CHECKFORTHREATS()
 
@@ -257,12 +252,13 @@ class GAMESTATE:
                             break
                     elif ENDPIECE[0] == ENEMY:
                         TYPE = ENDPIECE[1]
-                        #1) orthogonallyis a rook
-                        #2) diagonally is a bishop
-                        #3) 1 square away diagonally from king and PIECE is a pawn
-                        #4) any direction and piece is a queen
-                        #5) any direction 1 square away and piece is a king
-                        if (0 <= j <= 3 and TYPE == "R") or (4 <= j <= 7 and TYPE == "B") or (i == 1 and TYPE == "p" and ((ENEMY == "w" and 6 <= j <= 7) or (ENEMY == "b" and 4 <= j <= 5))) or (TYPE == "Q") or (i == 1 and TYPE == "K"):
+                        if (
+                            (0 <= j <= 3 and TYPE == "R") or
+                            (4 <= j <= 7 and TYPE == "B") or
+                            (i == 1 and TYPE == "p" and ((ENEMY == "w" and 6 <= j <= 7) or (ENEMY == "b" and 4 <= j <= 5))) or
+                            (TYPE == "Q") or
+                            (i == 1 and TYPE == "K")
+                            ):
                             if POSPIN == ():  # no PIECE blocking, so CHECK
                                 INCHECK = True
                                 CHECKS.append((ENDROW, ENDCOL, DIR[0], DIR[1]))

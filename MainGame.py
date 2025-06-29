@@ -37,8 +37,8 @@ def main():
     
     
     # both true = 2 humans , both false = 2 ai, one true and one false = human vs ai
-    HUMANISWHITE= True #true = human is white false = ai is white
-    HUMANISBLACK= True #true = human is black false = ai is black
+    HUMANISWHITE= False #true = human is white false = ai is white
+    HUMANISBLACK= False #true = human is black false = ai is black
     
     
     
