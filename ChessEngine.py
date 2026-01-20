@@ -1,5 +1,46 @@
 #Chess engine to calculate, play moves, save info and valid moves
 
+import random
+
+# Zobrist hashing tables for unique board state identifiers
+class ZOBRIST:
+    #Generates and manages Zobrist hashes for board positions
+    def __init__(self):
+        random.seed(42)  # Consistent seed for reproducibility
+        self.PIECE_HASHES = {}  # [piece][row][col]
+        self.SIDE_HASH = random.getrandbits(64)
+        self.CASTLERIGHTS_HASHES = [random.getrandbits(64) for _ in range(16)]  # 2^4 combinations
+        self.ENPASSANT_HASHES = [random.getrandbits(64) for _ in range(8)]  # for each file (column)
+        
+        # Initialize piece position hashes for all piece types and squares
+        pieces = ["wp", "wN", "wB", "wR", "wQ", "wK", "bp", "bN", "bB", "bR", "bQ", "bK"]
+        for piece in pieces:
+            self.PIECE_HASHES[piece] = {}
+            for row in range(8):
+                self.PIECE_HASHES[piece][row] = {}
+                for col in range(8):
+                    self.PIECE_HASHES[piece][row][col] = random.getrandbits(64)
+    
+    def get_piece_hash(self, piece, row, col):
+        #Get hash for a specific piece at a given position
+        if piece == "--":
+            return 0
+        return self.PIECE_HASHES[piece][row][col]
+    
+    def get_castle_hash(self, wks, wqs, bks, bqs):
+        #Get hash for castling rights
+        index = (int(wks) << 3) | (int(wqs) << 2) | (int(bks) << 1) | int(bqs)
+        return self.CASTLERIGHTS_HASHES[index]
+    
+    def get_enpassant_hash(self, ep_col):
+        #Get hash for en passant file
+        if ep_col == -1:
+            return 0
+        return self.ENPASSANT_HASHES[ep_col]
+
+# Global Zobrist instance
+ZOBRIST_INSTANCE = ZOBRIST()
+
 
 class GAMESTATE:
     def __init__(self):
@@ -34,6 +75,41 @@ class GAMESTATE:
         self.CASTLEDBLACK = False
         self.MOVECOUNT = 0
         self.LASTMOVE = None
+        self.BOARD_HASH = self.CALCULATE_BOARD_HASH()  # Unique identifier for this board state
+        self.BOARD_HASH_LOG = [self.BOARD_HASH]  # Log of all board hashes
+        self.HALFMOVE_CLOCK = 0  # Counts moves since last pawn move or capture (for 50-move rule)
+        
+
+    def CALCULATE_BOARD_HASH(self):
+        """Calculate Zobrist hash for current board position"""
+        hash_value = 0
+        
+        # Hash all pieces on the board
+        for row in range(8):
+            for col in range(8):
+                piece = self.BOARD[row][col]
+                hash_value ^= ZOBRIST_INSTANCE.get_piece_hash(piece, row, col)
+        
+        # Hash whose turn it is
+        if not self.WHITETOMOVE:
+            hash_value ^= ZOBRIST_INSTANCE.SIDE_HASH
+        
+        # Hash castling rights
+        hash_value ^= ZOBRIST_INSTANCE.get_castle_hash(
+            self.CURRENTCASTLERIGHTS.WKS,
+            self.CURRENTCASTLERIGHTS.WQS,
+            self.CURRENTCASTLERIGHTS.BKS,
+            self.CURRENTCASTLERIGHTS.BQS
+        )
+        
+        # Hash en passant possibility
+        if self.ENPASSANTPOSSIBLE:
+            ep_col = self.ENPASSANTPOSSIBLE[1]
+            hash_value ^= ZOBRIST_INSTANCE.get_enpassant_hash(ep_col)
+        else:
+            hash_value ^= ZOBRIST_INSTANCE.get_enpassant_hash(-1)
+        
+        return hash_value
 
     def MAKEMOVE(self, MOVE):
 
@@ -74,6 +150,16 @@ class GAMESTATE:
                                                    self.CURRENTCASTLERIGHTS.WQS, self.CURRENTCASTLERIGHTS.BQS))
         self.MOVECOUNT += 1
         self.LASTMOVE = MOVE
+        
+        # Update halfmove clock for 50-move rule and 3-fold repetition
+        if MOVE.PIECECAP != "--" or MOVE.PIECEMOV[1] == "p":
+            self.HALFMOVE_CLOCK = 0  # Reset on pawn move or capture
+        else:
+            self.HALFMOVE_CLOCK += 1
+        
+        # Update board hash
+        self.BOARD_HASH = self.CALCULATE_BOARD_HASH()
+        self.BOARD_HASH_LOG.append(self.BOARD_HASH)
 
     def UNDOMOVE(self):
         if len(self.MOVELOG) != 0:  #make sure that there is a MOVE to undo
@@ -106,6 +192,10 @@ class GAMESTATE:
                     self.BOARD[MOVE.ENDROW][MOVE.ENDCOL + 1] = '--'
             self.CHECKMATE = False
             self.STALEMATE = False
+            
+            # Restore board hash
+            self.BOARD_HASH_LOG.pop()
+            self.BOARD_HASH = self.BOARD_HASH_LOG[-1]
 
     def UPDATECASTLERIGHTS(self, MOVE):
         if MOVE.PIECECAP == "wR":
@@ -137,6 +227,44 @@ class GAMESTATE:
                     self.CURRENTCASTLERIGHTS.BQS = False
                 elif MOVE.STARTCOL == 7:  #right rook
                     self.CURRENTCASTLERIGHTS.BKS = False
+
+    def IS_INSUFFICIENT_MATERIAL(self):
+        #Check for insufficient material draw conditions
+        piece_count = {}
+        for row in self.BOARD:
+            for square in row:
+                if square != "--":
+                    piece_type = square[1]
+                    piece_count[piece_type] = piece_count.get(piece_type, 0) + 1
+        
+        # Only kings on board
+        if len(piece_count) == 1 and "K" in piece_count:
+            return True
+        
+        # King vs King + Knight
+        if len(piece_count) == 2 and "K" in piece_count and "N" in piece_count and piece_count["N"] == 1:
+            return True
+        
+        # King vs King + Bishop
+        if len(piece_count) == 2 and "K" in piece_count and "B" in piece_count and piece_count["B"] == 1:
+            return True
+        
+        return False
+    
+    def IS_THREEFOLD_REPETITION(self):
+        #Check for threefold repetition draw condition
+        current_hash = self.BOARD_HASH
+        repetition_count = 0
+        
+        for hash_value in self.BOARD_HASH_LOG:
+            if hash_value == current_hash:
+                repetition_count += 1
+        
+        return repetition_count >= 3
+    
+    def IS_FIFTYMOVE_RULE(self):
+        #Check for 50-move rule draw condition
+        return self.HALFMOVE_CLOCK >= 100  # 100 halfmoves = 50 full moves
 
     def GETVALIDMOVES(self):
 
@@ -190,6 +318,15 @@ class GAMESTATE:
         else:
             self.CHECKMATE = False
             self.STALEMATE = False
+        
+        # Check for other draw conditions (only if no checkmate/stalemate yet)
+        if not self.CHECKMATE and not self.STALEMATE:
+            if self.IS_INSUFFICIENT_MATERIAL():
+                self.STALEMATE = True  # Insufficient material = draw
+            elif self.IS_THREEFOLD_REPETITION():
+                self.STALEMATE = True  # 3-fold repetition = draw
+            elif self.IS_FIFTYMOVE_RULE():
+                self.STALEMATE = True  # 50-move rule = draw
 
         self.CURRENTCASTLERIGHTS = TEMPCASTLERIGHTS
         return MOVES

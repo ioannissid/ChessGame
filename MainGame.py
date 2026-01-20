@@ -15,30 +15,41 @@ def loadImage():
     PIECES = ['wp', 'wR', 'wN', 'wB', 'wK', 'wQ', 'bp', 'bR', 'bN', 'bB', 'bK', 'bQ']
     for PIECE in PIECES:
         IMAGES[PIECE] = G.transform.scale(G.image.load("Image/" + PIECE + ".png"), (SQ_SIZE, SQ_SIZE))
+
+def RESET_GAME(HUMANISWHITE, HUMANISBLACK):
+    """Reset all game state variables - used by both manual reset and training mode"""
+    GAMESTATE = ChessEngine.GAMESTATE()
+    ChessAI.RESET_TRANSPOSITION_TABLE()
+    VALIDMOVES = GAMESTATE.GETVALIDMOVES()
+    SQSELECTED = ()
+    PLAYERCLICKS = []
+    MOVEMADE = False
+    ANIMATE = False
+    GAMEOVER = False
+    MOVEUNDONE = False
+    AIWORKING = False
+    MOVEFINDER = None
+    HUMANTURN = (GAMESTATE.WHITETOMOVE and HUMANISWHITE) or (not GAMESTATE.WHITETOMOVE and HUMANISBLACK)
+    
+    return GAMESTATE, VALIDMOVES, SQSELECTED, PLAYERCLICKS, MOVEMADE, ANIMATE, GAMEOVER, MOVEUNDONE, AIWORKING, MOVEFINDER, HUMANTURN
+
 #main driver to deal with user input and graphics
 def main():
     G.init()
     SCREEN = G.display.set_mode((BOARD_WIDTH+MOVELOGWIDTH, BOARD_HEIGHT))
     CLOCK = G.time.Clock()
     SCREEN.fill(G.Color("white"))
-    GAMESTATE = ChessEngine.GAMESTATE()
-    VALIDMOVES = GAMESTATE.GETVALIDMOVES()
-    MOVEMADE = False  #flag for when a move is made
     loadImage()  #so it happens only once
-    RUNNING = True
-    ANIMATE=False #flag for animation
-    SQSELECTED = ()  # keeps tract  of the user's last click wit h no square initially
-    PLAYERCLICKS = [] #keeps track of player clicks (2 clicks)
-    GAMEOVER= False #flag for game over
-    MOVELOGFONT = G.font.SysFont("Times New Roman", 16, True, False) 
-    AIWORKING = False #flag for ai working
-    MOVEFINDER = None 
-    MOVEUNDONE = False #flag for move undone
-    
     
     # both true = 2 humans , both false = 2 ai, one true and one false = human vs ai
     HUMANISWHITE= False #true = human is white false = ai is white
     HUMANISBLACK= False #true = human is black false = ai is black
+    TrainingMode= False #flag for training mode
+    
+    # Initial game setup
+    GAMESTATE, VALIDMOVES, SQSELECTED, PLAYERCLICKS, MOVEMADE, ANIMATE, GAMEOVER, MOVEUNDONE, AIWORKING, MOVEFINDER, HUMANTURN = RESET_GAME(HUMANISWHITE, HUMANISBLACK)
+    MOVELOGFONT = G.font.SysFont("Times New Roman", 16, True, False)
+    RUNNING = True
     
     
     
@@ -96,19 +107,9 @@ def main():
                         AIWORKING=False
                     MOVEUNDONE=True
                 if I.key == G.K_r:  # reset with r
-                    GAMESTATE = ChessEngine.GAMESTATE()
-                    VALIDMOVES = GAMESTATE.GETVALIDMOVES()
-                    SQSELECTED = ()
-                    PLAYERCLICKS = []
-                    MOVEMADE = False
-                    ANIMATE = False
-                    GAMEOVER = False
+                    GAMESTATE, VALIDMOVES, SQSELECTED, PLAYERCLICKS, MOVEMADE, ANIMATE, GAMEOVER, MOVEUNDONE, AIWORKING, MOVEFINDER, HUMANTURN = RESET_GAME(HUMANISWHITE, HUMANISBLACK)
                     if MOVEFINDER is not None:
                         MOVEFINDER.terminate()
-                    MOVEFINDER = None
-                    AIWORKING = False
-                    MOVEUNDONE = False
-                    HUMANTURN = (GAMESTATE.WHITETOMOVE and HUMANISWHITE) or (not GAMESTATE.WHITETOMOVE and HUMANISBLACK) #recalculate the turn because it created a bug when the reset happended
                     continue
                 if I.key== G.K_ESCAPE:
                     RUNNING=False
@@ -123,13 +124,20 @@ def main():
                 MOVEFINDER.start() #calls ai with the gamestate and valid moves
 
             if not MOVEFINDER.is_alive(): #if the ai is done thinking        
-                AIMOVE = RQUEUE.get() #get the move from the ai
+                RESULT = RQUEUE.get() #get the move and node count from the ai
+            
+                AIMOVE, NODES_COUNT = RESULT  # Always expect a tuple
+                
+
                 if AIMOVE == None:
                     AIMOVE = ChessAI.FINDRANDOMMOVE(VALIDMOVES)
                 GAMESTATE.MAKEMOVE(AIMOVE)
                 MOVEMADE=True
                 ANIMATE=True
                 AIWORKING=False
+                
+
+                print(f"Nodes searched: {NODES_COUNT:,}")
         
         
         
@@ -153,9 +161,13 @@ def main():
                 DRAWENDGAMETEXT(SCREEN, "Black wins by Checkmate",GAMESTATE)
             else:
                 DRAWENDGAMETEXT (SCREEN,"White wins by Checkmate",GAMESTATE)
+            if TrainingMode:
+                GAMESTATE, VALIDMOVES, SQSELECTED, PLAYERCLICKS, MOVEMADE, ANIMATE, GAMEOVER, MOVEUNDONE, AIWORKING, MOVEFINDER, HUMANTURN = RESET_GAME(HUMANISWHITE, HUMANISBLACK)
         elif GAMESTATE.STALEMATE:
             GAMEOVER=True
             DRAWENDGAMETEXT(SCREEN,"Stalemate",GAMESTATE)
+            if TrainingMode:
+                GAMESTATE, VALIDMOVES, SQSELECTED, PLAYERCLICKS, MOVEMADE, ANIMATE, GAMEOVER, MOVEUNDONE, AIWORKING, MOVEFINDER, HUMANTURN = RESET_GAME(HUMANISWHITE, HUMANISBLACK)
             
 
         

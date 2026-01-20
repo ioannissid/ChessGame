@@ -1,10 +1,22 @@
 import random
 import MaterialScore
+from TranspotitionTable import TranspositionTable
 
 CHECKMATESCORE = 1000000  # Increased to ensure it's prioritized
 STALEMATESCORE = 0
 MAXDEPTH = 4 # Reduced depth for faster computation
-OPENING_RANDOMIZATION = 0.1  # 10% random variation in opening phase
+OPENING_RANDOMIZATION = 0.2 # 10% random variation in opening phase
+
+# Initialize transposition table for caching board evaluations
+TRANSPOSITION_TABLE = TranspositionTable(max_size=500000)
+
+# Node counter for performance analysis
+NODES_SEARCHED = 0
+
+
+def RESET_TRANSPOSITION_TABLE():
+    global TRANSPOSITION_TABLE
+    TRANSPOSITION_TABLE.clear()
 
 
 def FINDRANDOMMOVE(VALIDMOVES):
@@ -45,13 +57,14 @@ def ORDERMOVES(GAMESTATE, MOVES):#Orders moves to improve alpha-beta pruning eff
 
 
 def FINDBESTMOVE(GAMESTATE, VALIDMOVES, RQUEUE):
-    global NEXTMOVE
+    global NEXTMOVE, NODES_SEARCHED
     NEXTMOVE = None
+    NODES_SEARCHED = 0  # Reset node counter for this search
     
     
     if GAMESTATE.MOVECOUNT < 10 and random.random() < OPENING_RANDOMIZATION:# Add randomization in opening phase (first 10 moves)
         NEXTMOVE = FINDRANDOMMOVE(VALIDMOVES)
-        RQUEUE.put(NEXTMOVE)
+        RQUEUE.put((NEXTMOVE, NODES_SEARCHED))  # Return move and node count
         return
     
     
@@ -60,7 +73,7 @@ def FINDBESTMOVE(GAMESTATE, VALIDMOVES, RQUEUE):
         if GAMESTATE.CHECKMATE:
             NEXTMOVE = MOVE
             GAMESTATE.UNDOMOVE()
-            RQUEUE.put(NEXTMOVE)
+            RQUEUE.put((NEXTMOVE, NODES_SEARCHED))  # Return move and node count
             return
         GAMESTATE.UNDOMOVE()
     
@@ -68,18 +81,33 @@ def FINDBESTMOVE(GAMESTATE, VALIDMOVES, RQUEUE):
     ORDEREDMOVES = ORDERMOVES(GAMESTATE, VALIDMOVES)# If no immediate checkmate, do regular search with ordered moves
     FINDNEGA_ALPHA_BETAMOVE(GAMESTATE, ORDEREDMOVES, MAXDEPTH, -CHECKMATESCORE, CHECKMATESCORE, 
                            1 if GAMESTATE.WHITETOMOVE else -1)
-    RQUEUE.put(NEXTMOVE)
+    RQUEUE.put((NEXTMOVE, NODES_SEARCHED))  # Return move and node count
 
 
 def FINDNEGA_ALPHA_BETAMOVE(GAMESTATE, VALIDMOVES, DEPTH, ALPHA, BETA, TURNMULTI):
-    global NEXTMOVE
+    global NEXTMOVE, NODES_SEARCHED
+    
+    # Increment node counter
+    NODES_SEARCHED += 1
+    
+    # STEP 1: Check transposition table for cached result
+    HASH_KEY = GAMESTATE.BOARD_HASH
+    CACHED_RESULT = TRANSPOSITION_TABLE.lookup(HASH_KEY, DEPTH, ALPHA, BETA)
+    if CACHED_RESULT is not None:
+        CACHED_VALUE, FLAG = CACHED_RESULT
+        return CACHED_VALUE  # Use cached evaluation!
     
     if GAMESTATE.CHECKMATE:
         return -CHECKMATESCORE 
     if DEPTH == 0:
-        return TURNMULTI * BOARDSCORE(GAMESTATE)
+        SCORE = TURNMULTI * BOARDSCORE(GAMESTATE)
+        # Store leaf node evaluation in transposition table
+        TRANSPOSITION_TABLE.store(HASH_KEY, DEPTH, SCORE, TranspositionTable.EXACT)
+        return SCORE
     
     MAXSCORE = -CHECKMATESCORE
+    ALPHA_ORIG = ALPHA  # Store original alpha to determine flag type
+    
     for MOVE in VALIDMOVES:
         GAMESTATE.MAKEMOVE(MOVE)
         SCORE = -FINDNEGA_ALPHA_BETAMOVE(GAMESTATE, GAMESTATE.GETVALIDMOVES(), 
@@ -94,7 +122,16 @@ def FINDNEGA_ALPHA_BETAMOVE(GAMESTATE, VALIDMOVES, DEPTH, ALPHA, BETA, TURNMULTI
         ALPHA = max(ALPHA, SCORE)
         if ALPHA >= BETA:
             break
-            
+    
+    # STEP 2: Store result in transposition table with appropriate flag
+    if MAXSCORE <= ALPHA_ORIG:
+        FLAG = TranspositionTable.UPPER_BOUND  # Alpha cutoff
+    elif MAXSCORE >= BETA:
+        FLAG = TranspositionTable.LOWER_BOUND  # Beta cutoff
+    else:
+        FLAG = TranspositionTable.EXACT  # No cutoff, full search
+    
+    TRANSPOSITION_TABLE.store(HASH_KEY, DEPTH, MAXSCORE, FLAG)
     return MAXSCORE
 
 
