@@ -1,4 +1,6 @@
 #Drive file with user input and displaying the gamestate.
+import os
+os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 import pygame as G #shortcut for game cause writing pygame over and over became tedious
 import ChessEngine
 import ChessAI
@@ -45,6 +47,10 @@ def main():
     HUMANISWHITE= False #true = human is white false = ai is white
     HUMANISBLACK= False #true = human is black false = ai is black
     TrainingMode= False #flag for training mode
+    
+    # Opening strategy: 0=most popular, 1=second popular, 2=random from top 3
+    OPENING_STRATEGY = 2  # Change this: 0, 1, or 2
+    ChessAI.OPENING_STRATEGY = OPENING_STRATEGY
     
     # Initial game setup
     GAMESTATE, VALIDMOVES, SQSELECTED, PLAYERCLICKS, MOVEMADE, ANIMATE, GAMEOVER, MOVEUNDONE, AIWORKING, MOVEFINDER, HUMANTURN = RESET_GAME(HUMANISWHITE, HUMANISBLACK)
@@ -138,6 +144,8 @@ def main():
                 
 
                 print(f"Nodes searched: {NODES_COUNT:,}")
+                print(f"Board Evaluation: {ChessAI.BOARDSCORE(GAMESTATE)}")
+                print(f"Board FEN: {GAMESTATE.TO_FEN()}")
         
         
         

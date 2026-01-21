@@ -1,6 +1,7 @@
 import random
 import MaterialScore
 from TranspotitionTable import TranspositionTable
+from OpeningBookAPI import OpeningBookAPI, should_use_opening_book
 
 CHECKMATESCORE = 1000000  # Increased to ensure it's prioritized
 STALEMATESCORE = 0
@@ -9,6 +10,12 @@ OPENING_RANDOMIZATION = 0.2 # 10% random variation in opening phase
 
 # Initialize transposition table for caching board evaluations
 TRANSPOSITION_TABLE = TranspositionTable(max_size=500000)
+
+# Initialize online opening book API (no storage needed - queries online!)
+OPENING_BOOK = OpeningBookAPI(timeout=1)
+
+# Opening strategy: 0=most popular, 1=second popular, 2=random from top 3
+OPENING_STRATEGY = 2
 
 # Node counter for performance analysis
 NODES_SEARCHED = 0
@@ -66,6 +73,43 @@ def FINDBESTMOVE(GAMESTATE, VALIDMOVES, RQUEUE):
         NEXTMOVE = FINDRANDOMMOVE(VALIDMOVES)
         RQUEUE.put((NEXTMOVE, NODES_SEARCHED))  # Return move and node count
         return
+    
+    # ===== NEW: Query online opening book before searching =====
+    if should_use_opening_book(GAMESTATE.MOVECOUNT):
+        try:
+            # Get current position as FEN (standard chess notation)
+            fen = GAMESTATE.TO_FEN()
+            
+            # Query Lichess for best move in this position (with short timeout)
+            # Use threading to ensure we don't block the game
+            import threading
+            
+            result = []
+            def query_api():
+                try:
+                    move = OPENING_BOOK.get_opening_move(fen, strategy=OPENING_STRATEGY)
+                    if move:
+                        result.append(move)
+                except:
+                    pass
+            
+            thread = threading.Thread(target=query_api, daemon=True)
+            thread.start()
+            thread.join(timeout=0.8)  # Wait max 0.8 seconds
+            
+            if result:
+                uci_move = result[0]
+                # Convert UCI format back to our engine's MOVE object
+                book_move = OPENING_BOOK.uci_to_internal_move(uci_move, VALIDMOVES)
+                
+                if book_move:
+                    print(f"Book Move Found: {uci_move}")
+                    NEXTMOVE = book_move
+                    RQUEUE.put((NEXTMOVE, NODES_SEARCHED))
+                    return
+        except Exception as e:
+            print(f"Error querying opening book: {e}")
+    # ===== END: Opening book query =====
     
     
     for MOVE in VALIDMOVES:# First check for immediate checkmates

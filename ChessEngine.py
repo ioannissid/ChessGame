@@ -110,6 +110,86 @@ class GAMESTATE:
             hash_value ^= ZOBRIST_INSTANCE.get_enpassant_hash(-1)
         
         return hash_value
+    
+    def TO_FEN(self):
+    
+    #    Convert current board state to FEN (Forsyth-Edwards Notation).
+        
+    #    FEN format: "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1"
+        
+    #    Components:
+    #    1. Piece placement (from white's perspective)
+    #    2. Active color (w or b)
+    #    3. Castling rights (KQkq)
+    #    4. En passant target square
+    #    5. Halfmove clock (for 50-move rule)
+    #    6. Fullmove number
+        
+    #    Returns:
+    #        FEN string representing current position
+        # 1. Build piece placement string
+        fen_board = []
+        for row in self.BOARD:
+            fen_row = ""
+            empty_count = 0
+            
+            for square in row:
+                if square == "--":
+                    empty_count += 1
+                else:
+                    if empty_count > 0:
+                        fen_row += str(empty_count)
+                        empty_count = 0
+                    # Convert piece: wp → P, bp → p, wN → N, bN → n, etc.
+                    # Note: lowercase letter = black, uppercase = white
+                    color = square[0]  # 'w' or 'b'
+                    piece_type = square[1]  # 'p', 'N', 'B', 'R', 'Q', 'K'
+                    
+                    if color == 'w':
+                        fen_row += piece_type.upper()  # Uppercase for white
+                    else:
+                        fen_row += piece_type.lower()  # Lowercase for black
+            
+            if empty_count > 0:
+                fen_row += str(empty_count)
+            
+            fen_board.append(fen_row)
+        
+        fen_piece_placement = "/".join(fen_board)
+        
+        # 2. Active color
+        fen_color = "w" if self.WHITETOMOVE else "b"
+        
+        # 3. Castling rights
+        fen_castling = ""
+        if self.CURRENTCASTLERIGHTS.WKS:
+            fen_castling += "K"
+        if self.CURRENTCASTLERIGHTS.WQS:
+            fen_castling += "Q"
+        if self.CURRENTCASTLERIGHTS.BKS:
+            fen_castling += "k"
+        if self.CURRENTCASTLERIGHTS.BQS:
+            fen_castling += "q"
+        if not fen_castling:
+            fen_castling = "-"
+        
+        # 4. En passant target square
+        if self.ENPASSANTPOSSIBLE:
+            ep_row = self.ENPASSANTPOSSIBLE[0]
+            ep_col = self.ENPASSANTPOSSIBLE[1]
+            # Convert to chess notation
+            fen_ep = chr(ord('a') + ep_col) + str(8 - ep_row)
+        else:
+            fen_ep = "-"
+        
+        # 5 & 6. Halfmove clock and fullmove number
+        fen_halfmove = str(self.HALFMOVE_CLOCK)
+        fen_fullmove = str((len(self.MOVELOG) // 2) + 1)
+        
+        # Combine all components
+        fen = f"{fen_piece_placement} {fen_color} {fen_castling} {fen_ep} {fen_halfmove} {fen_fullmove}"
+        
+        return fen
 
     def MAKEMOVE(self, MOVE):
 
